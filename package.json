@@ -1,0 +1,24 @@
+{
+  "name": "wechat-user-bot",
+  "version": "0.0.1",
+  "description": "A wechat bot for normal users. Based on web wechat.",
+  "main": "test.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HalfdogStudio/wechat-user-bot.git"
+  },
+  "keywords": [
+    "wechat",
+    "weixin",
+    "robot"
+  ],
+  "author": "Liu Yuyang (sa@linuxer.me)",
+  "license": "GPL v2",
+  "bugs": {
+    "url": "https://github.com/HalfdogStudio/wechat-user-bot/issues"
+  },
+  "homepage": "https://github.com/HalfdogStudio/wechat-user-bot#readme"
+}
