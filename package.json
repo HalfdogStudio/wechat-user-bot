@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/HalfdogStudio/wechat-user-bot/issues"
   },
-  "homepage": "https://github.com/HalfdogStudio/wechat-user-bot#readme"
+  "homepage": "https://github.com/HalfdogStudio/wechat-user-bot#readme",
+  "dependencies": {
+    "request": "^2.67.0"
+  }
 }
