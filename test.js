@@ -1,12 +1,11 @@
-var https = require('https');
-var url = require('url');
-var querystring = require('querystring');
-var fs = require('fs');
+// var https = require('https');
+// var url = require('url');
+// var querystring = require('querystring');
+//var fs = require('fs');
 var child_process = require('child_process');
 var debug = (text)=>console.error("[DEBUG]", text);
 var inspect = require('util').inspect;
 var request = require('request');
-// var debug = ()=>{};
 
 var baseUrl = 'https://wx.qq.com'
 
@@ -20,7 +19,7 @@ var getUUID = new Promise((resolve, reject)=>{
 
   var uri = '/jslogin';
 
-  debug(uri);
+  //debug(uri);
 
   var options = {
     uri: uri,
@@ -31,7 +30,7 @@ var getUUID = new Promise((resolve, reject)=>{
 
   var req = request(options, (error, response, body)=>{
     if (error) {
-      debug(error);
+      //debug(error);
       reject(error);
     }
     resolve(body);
@@ -40,7 +39,7 @@ var getUUID = new Promise((resolve, reject)=>{
 
 function checkAndParseUUID(text) {
   var result = /window.QRLogin.code = (\d+); window.QRLogin.uuid = "([^"]+)";/.exec(text);
-  debug("checkAndParseUUID");
+  //debug("checkAndParseUUID");
   if (result[1] != '200') {
     return false;
   }
@@ -52,22 +51,20 @@ function handleError(e) {
 }
 
 function showQRImage(uuid) {
+  console.log("请扫描二维码并确认登录，关闭二维码窗口继续...");
   var QRUrl = 'https://login.weixin.qq.com/qrcode/' + uuid + '?';
   params = {
     t: 'webwx',
     '_': Date.now()
   }
-  debug(QRUrl + querystring.stringify(params))
+  //debug(QRUrl + querystring.stringify(params))
 
   var checkLoginPromise = new Promise((resolve, reject)=> {
-    // 你猜我为啥忽然用了https而不是request
-    // request.pipe到child_process会报错？
-    // FIXME
     var display = child_process.spawn('display');
     display.on('close', (code)=>{
       resolve(uuid);
     });
-    var req = request(QRUrl + querystring.stringify(params)).pipe(display.stdin);
+    var req = request(QRUrl, {qs: params}).pipe(display.stdin);
   });
 
   return checkLoginPromise;
@@ -79,17 +76,16 @@ function checkLogin(uuid) {
   var p = new Promise((resolve, reject)=> {
     var timestamp = Date.now();
     var checkUrl = `https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=1&uuid=${uuid}&_=${timestamp}`
-    // FIXME: request
     request(checkUrl, (error, response, body)=>{
       if (error) {
         reject(error);
       }
       if (/window\.code=200/.test(body)) {
-        console.log("LOGIN NOW...");
-        debug("in checkLogin: " + body);
+        console.log("登录微信...");
+        //debug("in checkLogin: " + body);
         resolve(body);
       } else {
-        console.log("restart program...")
+        console.log("登录错误，退出程序...")
         process.exit(1)
       }
     });
@@ -100,25 +96,28 @@ function checkLogin(uuid) {
 
 function parseRedirectUrl(text) {
   var result = /window\.redirect_uri="([^"]+)";/.exec(text);
-  debug("parse redirect_uri: " + result[1]);
+  //debug("parse redirect_uri: " + result[1]);
   if (!result) {
-    console.log("restart program...")
+    console.log("登录失败，退出程序")
     process.exit(1)
   }
   return result[1]
 }
 
 function login(redirectUrl) {
-  debug("redirectUrl in login:" + redirectUrl);
+  //debug("redirectUrl in login:" + redirectUrl);
   var p = new Promise((resolve, reject)=> {
     request.get({
       url: redirectUrl,
       jar: true,
       followRedirect: false,
     }, (error, response, body)=>{
-      // server set cookie here
-      //debug("set-cookie in login:\n" + inspect(res.headers));
-        resolve(body);
+      // server set cookie here，之后的操作需要cookie
+      ////debug("set-cookie in login:\n" + inspect(res.headers));
+      if (error) {
+        reject(error);
+      }
+      resolve(body);
     })
   });
 
@@ -126,7 +125,7 @@ function login(redirectUrl) {
 }
 
 function getbaseRequest(text) {
-  //debug("getbaseRequest： " + text)
+  ////debug("getbaseRequest： " + text)
   var skey = new RegExp('<skey>([^<]+)</skey>');
   var wxsid = new RegExp('<wxsid>([^<]+)</wxsid>');
   var wxuin = new RegExp('<wxuin>([^<]+)</wxuin>');
@@ -149,16 +148,19 @@ function getbaseRequest(text) {
     }, 
     pass_ticket: pass_ticket[1],
   }
-  debug("returnVal: \n" + inspect(returnVal))
+  //debug("returnVal: \n" + inspect(returnVal))
 
   return returnVal;
 }
 
 function webwxinit(obj) {
+  console.log("登录成功，初始化");
+  // FIXME: 初始化的时候初始化用户名和发送？作为全局好像也行
+  obj.MsgToUserAndSend = [];
   var p = new Promise((resolve, reject)=> {
-    debug("in webwxinit obj:\n" + inspect(obj));
+    //debug("in webwxinit obj:\n" + inspect(obj));
     var postData = {BaseRequest: obj.BaseRequest};
-    debug("in webwxinit postData: " + postData);
+    //debug("in webwxinit postData: " + postData);
     var timestamp = Date.now();
     var options = {
       baseUrl: 'https://wx.qq.com',
@@ -175,11 +177,11 @@ function webwxinit(obj) {
       if (error) {
         reject(error);
       }
-      debug("In webwxinit body: " + inspect(body));
-      fs.writeFile('init.json', JSON.stringify(body));
+      //debug("In webwxinit body: " + inspect(body));
+      // fs.writeFile('init.json', JSON.stringify(body));
       obj.username = body['User']['UserName'];
       obj.SyncKey = body['SyncKey'];
-      debug("My username: " + obj.username)
+      //debug("My username: " + obj.username)
       resolve(obj);
     })
   });
@@ -188,11 +190,12 @@ function webwxinit(obj) {
 
 
 function getContact(obj) {
+  console.log("初始化成功，获取联系人...")
   var p = new Promise((resolve, reject)=> {
-    debug('in getContact: \n' + inspect(obj));
+    //debug('in getContact: \n' + inspect(obj));
     var skey = obj.BaseRequest.Skey;
     var pass_ticket = obj.pass_ticket;
-    var jsonFile = fs.createWriteStream('contact.json');
+    // var jsonFile = fs.createWriteStream('contact.json');
     var timestamp = Date.now();
     var options = {
       baseUrl: 'https://wx.qq.com',
@@ -201,10 +204,11 @@ function getContact(obj) {
       json: true,
       jar: true,
     }
-    debug("getContact contactUrl: \n" + inspect(options));
+    //debug("getContact contactUrl: \n" + inspect(options));
     request(options, (error, response, body)=>{
-      fs.writeFile('contact.json', JSON.stringify(body));
+      // fs.writeFile('contact.json', JSON.stringify(body));
       var ml = body.MemberList;
+      obj.ml = ml;
       //obj.toUser = ml.filter(m=>(m.NickName == "核心活动都是玩玩玩吃吃吃的北邮GC"))[0]['UserName'];
       resolve(obj);
     });
@@ -213,37 +217,45 @@ function getContact(obj) {
 }
 
 function botSpeak(obj) {
-  debug('obj in botSpeak:\n' + inspect(obj));
+  //debug('obj in botSpeak:\n' + inspect(obj));
   var BaseRequest = obj.BaseRequest;
   var pass_ticket = obj.pass_ticket;
   var timestamp = Date.now();
-  var postData = {
-    BaseRequest: obj.BaseRequest,
-    Msg: {
-      "Type": 1,
-      "Content": obj.MsgToSend,
-      "FromUserName": obj.username,
-      "ToUserName": obj.MsgToUser,
-      "LocalID": `${timestamp}0855`,
-      "ClientMsgId": `${timestamp}0855`}
-  };
-  // 14519079059370342
-  // 14519073058800623
-  var options = {
-    baseUrl: 'https://wx.qq.com',
-    uri: `/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=en_US&pass_ticket=${pass_ticket}`,
-    method: 'POST',
-    jar: true,
-    json: true,
-    body: postData,
+
+  var random = Math.floor(Math.random() * 1000);
+  while (obj.MsgToUserAndSend.length > 0) {
+    random += 3;  // Strange hack，这个数应该是时间戳相同的消息先后编号
+    // FIXME: 先pop的应该是后收到的？不一定，可能需要在上一步检查返回消息CreateTime，但短暂时间间隔保证顺序也许是不必要的。
+    var msgBundle = obj.MsgToUserAndSend.pop();
+    var postData = {
+      BaseRequest: obj.BaseRequest,
+      Msg: {
+        "Type": 1,
+        "Content": msgBundle.Msg,
+        "FromUserName": obj.username,
+        "ToUserName": msgBundle.User,
+        "LocalID": `${timestamp}0${random}`,
+        "ClientMsgId": `${timestamp}0${random}`}
+    };
+    // 14519079059370342
+    // 14519073058800623
+    var options = {
+      baseUrl: 'https://wx.qq.com',
+      uri: `/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=en_US&pass_ticket=${pass_ticket}`,
+      method: 'POST',
+      jar: true,
+      json: true,
+      body: postData,
+    }
+
+    //debug("options in botSpeak: \n" + inspect(options));
+    //debug("postData in botSpeak: \n" + inspect(postData));
+
+    request(options, (error, response, body)=>{
+      // debug("in botSpeak ret: " + inspect(body));
+      console.log("[机器人回复]", msgBundle.Msg);
+    })
   }
-
-  debug("options in botSpeak: \n" + inspect(options));
-  debug("postData in botSpeak: \n" + inspect(postData));
-
-  request(options, (error, response, body)=>{
-    debug("in botSpeak ret: " + inspect(body));
-  })
 }
 
 function synccheck(obj) {
@@ -275,7 +287,7 @@ function synccheck(obj) {
       if (error) {
         reject(error);
       }
-      debug("in synccheck body : " + body);
+      //debug("in synccheck body : " + body);
       if (body !== 'window.synccheck={retcode:"0",selector:"0"}')
         resolve(obj);
     })
@@ -285,14 +297,13 @@ function synccheck(obj) {
 }
 
 function webwxsync(obj) {
-  // FIXME: 这里只是尝试代码
   // https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=xWam498tVKzNaHLt&skey=@crypt_3bb2969_a8ec83465d303fb83bf7ddcf512c081d&lang=en_US&pass_ticket=YIBmwsusvnbs8l7Z4wtRdBXtslA8JjyHxsy0Fsf3PN8NTiP3fzhjB9rOE%252Fzu6Nur
   // 参数里
   // rr这参数是什么鬼。。。
   // -732077262 先
   // -732579226 后
   var p = new Promise((resolve, reject) => {
-    debug('obj in webwxsync:\n' + inspect(obj));
+    //debug('obj in webwxsync:\n' + inspect(obj));
     var BaseRequest = obj.BaseRequest;
     var pass_ticket = obj.pass_ticket;
     var timestamp = Date.now();
@@ -309,8 +320,8 @@ function webwxsync(obj) {
       jar: true,
     }
 
-    debug("options in webwxsync: \n" + inspect(options));
-    debug("postData in webwxsync: \n" + inspect(postData));
+    //debug("options in webwxsync: \n" + inspect(options));
+    //debug("postData in webwxsync: \n" + inspect(postData));
 
     //
     // synccheck检查是否需要webwxsync
@@ -319,23 +330,53 @@ function webwxsync(obj) {
     // 当promise遇上循环
     // 请在评论区教教我该怎么在循环中优雅地使用Promise。。。
     request(options, (error, response, body)=>{
-      fs.writeFile('webwxsync.json', JSON.stringify(body));
+      // fs.writeFile('webwxsync.json', JSON.stringify(body));
       // 如果Ret: 0，有新消息
       //
       // update synckey
       obj.SyncKey = body.SyncKey;
       // 或者AddMsgCount 为 1
       if (body.AddMsgCount > 0) {
+        // FIXME: 
+        // 这个设计可能有问题，Promise数组
+        // 这段异步逻辑非常绕，我尝试这里说明
+        // obj.MsgToUserAndSend 来搜集这次websync得到的所有待回复的消息(打包用户名和回复内容)
+        // replyPromise代表未来某个时刻的回复
+        // ps代表这次websync得到的需要回复的消息(可能多条)对应的replyPromise的数组
+        // 只有ps钟所有reply都获得了，这时obj.MsgToUserAndSend就包含所有待回复打包消息，就可以把obj送给下一个then注册的函数处理。在robot中，websync下一个是botSpeak,就是回复函数。
+        var ps = [];
         for (var o of body.AddMsgList) {
           if ((o.MsgType == 1) && (o.ToUserName == obj.username)) { //给我
-            debug("in webwxsync someone call me:" + inspect(o));
+            //debug("in webwxsync someone call me:" + inspect(o));
+            // 查询用户名昵称
+            for (var i = 0; i < obj.ml.length; i++) {
+              if (obj.ml[i]['UserName'] == o.FromUserName) 
+                console.log('[' + obj.ml[i]['NickName'] + ' 说]', o.Content);
+            }
+            if (o.FromUserName.startsWith("@@") && !o.Content.includes("@小寒粉丝团")) {
+              // 群消息且at我的群昵称
+              continue;
+            }
+
+            // 有意思的东西哈哈
+            o.Content = o.Content.replace('@小寒粉丝团团员丙', '喂, ');
             
-            // FIXME: 添加[]，现在后面的信息会覆盖前面的
-            obj.MsgToSend = cleanReceivedMsg(o.Content);;
-            obj.MsgToUser = o.FromUserName;
-            resolve(obj);
+            var username = o.FromUserName;  // 闭包,防止串号，血泪教训
+            var replyPromise = reply(o.Content);
+            replyPromise.then(rep=>{
+              // debug("in ps reps promise:" + inspect(username))
+              // debug("in ps reps promise:" + inspect(rep))
+              obj.MsgToUserAndSend.push({
+                User: username,
+                Msg: "[WeChatBot]: " + rep,
+              });
+            });
+            ps.push(replyPromise);
           }
         }
+        Promise.all(ps).then(()=>{
+          resolve(obj);
+        });
       }
     });
   });
@@ -348,22 +389,38 @@ function robot(obj) {
       then(webwxsync).
       then(botSpeak).
       catch(console.error);
-  }, 6000)
+  }, 4000)
 }
 
 // FIXME:回复逻辑分离到其他文件
-function cleanReceivedMsg(content) {
-  var replyDict = [
-    "子曰：",
-    "您说：",
-    "您认为：",
-    "您觉得：",
-    "连任：",
-    "兹不兹瓷：",
-    "大新闻："
-  ]
+function reply(content) {
+  // 修正群消息
   content = content.replace(/^[^:]+:<br\/>/m, "");
-  return replyDict[Math.floor(Math.random() * replyDict.length)] + content;
+  //return Promise.resolve(content);
+  // 网络版的
+  return new Promise((resolve, reject)=> {
+    var url = `http://apis.baidu.com/turing/turing/turing`
+    request.get(
+      url,
+      {
+        headers: {
+          'apikey': '6053e172b7994b684aadfd4ae0841510',
+        },
+        qs: {
+          key: '879a6cb3afb84dbf4fc84a1df2ab7319',
+          info: content,
+          userid: 'eb2edb736',
+        },
+        json: true,
+      },
+      (error, response, body)=>{
+        if (error) {
+          reject(error);
+        }
+        //debug("in turing machine: " + inspect(body))
+        resolve(body.text);
+      });
+  });
 }
 
 getUUID.
