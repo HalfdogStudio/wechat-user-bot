@@ -10,10 +10,7 @@ function echo(content) {
 }
 
 function turingRobot(content) {
-  // 修正群消息
   content = content.replace(/^[^:]+:<br\/>/m, "");
-  //return Promise.resolve(content);
-  // 网络版的
   return new Promise((resolve, reject)=> {
     var url = `http://apis.baidu.com/turing/turing/turing`
     request.get(
