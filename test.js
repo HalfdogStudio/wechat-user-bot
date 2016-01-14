@@ -3,7 +3,7 @@ var child_process = require('child_process');
 var debug = (text)=>console.error("[DEBUG]", text);
 var inspect = require('util').inspect;
 var request = require('request');
-var turingRobot = require('./dialog.js').turingRobot;
+var reply = require('./dialog.js').turingRobot;
 
 var baseUrl = 'https://wx.qq.com'
 
@@ -59,45 +59,71 @@ function showQRImage(uuid) {
 
   var checkLoginPromise = new Promise((resolve, reject)=> {
     var display = child_process.spawn('display');
-    display.on('close', (code)=>{
-      resolve(uuid);
-    });
-    var req = request(QRUrl, {qs: param}).pipe(display.stdin);
+    display.on('exit', processExit);
+    var req = request(QRUrl, {qs: param});
+    req.on('response', ()=>{
+      resolve({
+        uuid: uuid,
+        display: display,
+        tip: 1, //标识
+      });
+    })
+    req.pipe(display.stdin);
   });
 
   return checkLoginPromise;
   // 登录
 }
 
-function checkLogin(uuid) {
+// 408 408 408 ... 201 ..408 .. 200 ok
+function checkLogin(obj) {
+  // 这里_是一个每次请求递增的值，但实际上随便赋值个时间戳就行
+  if (obj._) {
+    obj._ += 1;
+  } else {
+    obj._ = Date.now();
+  }
+  
+  var uuid = obj.uuid;
+  var display = obj.display;
   // 检查登录和跳转
   var p = new Promise((resolve, reject)=> {
-    var timestamp = Date.now();
-    var checkUrl = `https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=1&uuid=${uuid}&_=${timestamp}`
-    request(checkUrl, (error, response, body)=>{
-      if (error) {
-        reject(error);
-      }
-      if (/window\.code=200/.test(body)) {
-        console.log("登录微信...");
-        //debug("in checkLogin: " + body);
-        resolve(body);
-      } else {
-        console.log("登录错误，退出程序...")
-        process.exit(1)
-      }
-    });
+    var checkUrl = `https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=${obj.tip}&uuid=${uuid}&_=${obj._}` // 参数r意义不明，应该是时间戳
+    request(checkUrl,
+            (error, response, body)=>{
+              if (error) {
+                reject(error);
+              }
+              //debug("in checkLogin: " + body);
+              if (/window\.code=200/.test(body)) {
+                console.log("登录微信...");
+                // 删除退出子进程杀掉主进程的回调
+                display.removeListener('exit', processExit)
+                display.kill();
+                resolve(body);
+              } else if(/window\.code=201/.test(body)){
+                obj.tip = 0;  // 第一次之后tip都为0，不然下一个请求不是长连接
+                // NOTE: 在这里我试了一会儿
+                // 关键是对promise的理解。
+                // !! 总结！！
+                // setTimeout(()=>{
+                console.log("已扫描，请点击确认登录");
+                resolve(checkLogin(obj)); 
+                //}, 1000); 
+              } else if(/window\.code=408/.test(body)){
+                resolve(checkLogin(obj));
+              } else {
+                console.log("登录错误，退出程序...")
+              }
+            });
   });
-
   return p;
 }
 
 function parseRedirectUrl(text) {
   var result = /window\.redirect_uri="([^"]+)";/.exec(text);
-  //debug("parse redirect_uri: " + result[1]);
+  // debug("parse redirect_uri: " + inspect(result));
   if (!result) {
-    console.log("登录失败，退出程序")
-    process.exit(1)
   }
   return result[1]
 }
@@ -296,7 +322,7 @@ function synccheck(obj) {
       // debug("in synccheck body : " + body);
       // 服务器发出断开消息，登出
       if (body == 'window.synccheck={retcode:"1101",selector:"0"}') {
-        console.log("自动登出");
+        console.log("服务器断开连接，退出程序")
         process.exit(1)
       } 
       // TODO: 整理各种情况
@@ -373,16 +399,18 @@ function webwxsync(obj) {
           // FIXME: Newsgrp这种
           // 自定义过滤
           // Web 微信中at与不at消息是一样的，而我暂时没发现怎样获得我的群名片，似乎是并无明显方法获得。
-          if (o.FromUserName.startsWith("@@") && !o.Content.includes("@小寒粉丝团")) {
+          // FIXME: 规则
+          if (o.FromUserName.startsWith("@@") && (!o.Content.includes("@小寒粉丝团") || !(!o.Content.includes("@狂风落尽深红色绿树成荫子满枝")))) {
             // 群消息且at我在某个群的群昵称
             continue;
           }
 
           // 有意思的东西哈哈
           o.Content = o.Content.replace(/@小寒粉丝团团员丙/g, '喂, ');
+          o.Content = o.Content.replace(/@狂风落尽深红色绿树成荫子满枝/g, '喂, ');
 
           var username = o.FromUserName;  // 闭包,防止串号，血泪教训
-          var replyPromise = turingRobot(o.Content);
+          var replyPromise = reply(o.Content, o.FromUserName);
           replyPromise.then(rep=>{
             // debug("in ps reps promise:" + inspect(username))
             // debug("in ps reps promise:" + inspect(rep))
@@ -415,6 +443,11 @@ function passWebwxsync(obj) {
   if (!obj.webwxsync) {
     return Promise.resolve(obj);
   }
+}
+
+function processExit(code, signal) {
+  console.log("登录失败，退出程序");
+  process.exit(code)
 }
 
 getUUID.
