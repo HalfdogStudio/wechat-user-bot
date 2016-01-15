@@ -168,7 +168,7 @@ function getbaseRequest(text) {
 
 function webwxinit(obj) {
   console.log("登录成功，初始化");
-  // FIXME: 初始化的时候初始化用户名和发送？作为全局好像也行
+  // FIXME: 初始化的时候初始化用户名和发送？作为全局好像也行？
   obj.MsgToUserAndSend = [];
   var p = new Promise((resolve, reject)=> {
     //debug("in webwxinit obj:\n" + inspect(obj));
@@ -234,13 +234,10 @@ function botSpeak(obj) {
     //debug('obj in botSpeak:\n' + inspect(obj));
     var BaseRequest = obj.BaseRequest;
     var pass_ticket = obj.pass_ticket;
-    var timestamp = Date.now();
 
-    var random = Math.floor(Math.random() * 1000);
     while (obj.MsgToUserAndSend.length > 0) {
       //console.log("[every loop]" + inspect(obj.MsgToUserAndSend));
-      random += 3;  // Strange hack，这个数应该是时间戳相同的消息先后编号
-      // FIXME: 先pop的应该是后收到的？不一定，可能需要在上一步检查返回消息CreateTime，但短暂时间间隔保证顺序也许是不必要的。
+      var msgId = (Date.now() + Math.random().toFixed(3)).replace('.', '');
       var msgBundle = obj.MsgToUserAndSend.pop();
       var postData = {
         BaseRequest: obj.BaseRequest,
@@ -249,8 +246,8 @@ function botSpeak(obj) {
           "Content": msgBundle.Msg,
           "FromUserName": obj.username,
           "ToUserName": msgBundle.User,
-          "LocalID": `${timestamp}0${random}`,
-          "ClientMsgId": `${timestamp}0${random}`}
+          "LocalID": msgId,
+          "ClientMsgId": msgId}
       };
       // 14519079059370342
       // 14519073058800623
