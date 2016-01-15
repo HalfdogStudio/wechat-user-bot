@@ -130,7 +130,6 @@ function login(redirectUrl) {
       followRedirect: false,
     }, (error, response, body)=>{
       // server set cookie here，之后的操作需要cookie
-      ////debug("set-cookie in login:\n" + inspect(res.headers));
       if (error) {
         reject(error);
       }
@@ -152,16 +151,13 @@ function getbaseRequest(text) {
   var wxsid = wxsid.exec(text);
   var wxuin = wxuin.exec(text);
   var pass_ticket = pass_ticket.exec(text);
-  // if (!(skey && wxsid && wxuin && pass_ticket)) {
-  //   return false;
-  // }
 
   var returnVal =  {
     BaseRequest: {
       Skey: skey[1],
       Sid: wxsid[1],
       Uin: wxuin[1],
-      DeviceID: 'e987710405869831'
+      DeviceID: 'e' + ('' + Math.random().toFixed(15)).substring(2, 17)
     }, 
     pass_ticket: pass_ticket[1],
   }
