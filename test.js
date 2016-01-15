@@ -249,8 +249,6 @@ function botSpeak(obj) {
           "LocalID": msgId,
           "ClientMsgId": msgId}
       };
-      // 14519079059370342
-      // 14519073058800623
       var options = {
         baseUrl: 'https://wx.qq.com',
         uri: `/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=en_US&pass_ticket=${pass_ticket}`,
@@ -295,7 +293,6 @@ function synccheck(obj) {
         uin: uin,
         deviceid: deviceid,
         synckey: synckey,
-        //_: 一个看上去像timestamp但每次递增1的不知道啥
       },
       jar: true,
       timeout: 35000, // 源码这么写的
@@ -324,23 +321,19 @@ function synccheck(obj) {
 
 function webwxsync(obj) {
   // https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=xWam498tVKzNaHLt&skey=@crypt_3bb2969_a8ec83465d303fb83bf7ddcf512c081d&lang=en_US&pass_ticket=YIBmwsusvnbs8l7Z4wtRdBXtslA8JjyHxsy0Fsf3PN8NTiP3fzhjB9rOE%252Fzu6Nur
-  // 参数里
-  // rr这参数是什么鬼。。。
-  // -732077262 先
-  // -732579226 后
   passWebwxsync(obj);
   var p = new Promise((resolve, reject) => {
     //debug('obj in webwxsync:\n' + inspect(obj));
     var BaseRequest = obj.BaseRequest;
     var pass_ticket = obj.pass_ticket;
-    var timestamp = Date.now();
+    var rr = ~Date.now();
     var postData = {
       BaseRequest: obj.BaseRequest,
       SyncKey: obj.SyncKey
     };
     var options = {
       baseUrl: 'https://wx.qq.com',
-      uri: `/cgi-bin/mmwebwx-bin/webwxsync?sid=${obj.BaseRequest.Sid}&skey=${obj.BaseRequest.Skey}&lang=en_US&pass_ticket=${pass_ticket}`,
+      uri: `/cgi-bin/mmwebwx-bin/webwxsync?sid=${obj.BaseRequest.Sid}&skey=${obj.BaseRequest.Skey}&lang=en_US&pass_ticket=${pass_ticket}&rr=${rr}`,
       method: 'POST',
       body: postData,
       json: true,
