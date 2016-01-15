@@ -77,18 +77,13 @@ function showQRImage(uuid) {
 
 // 408 408 408 ... 201 ..408 .. 200 ok
 function checkLogin(obj) {
-  // 这里_是一个每次请求递增的值，但实际上随便赋值个时间戳就行
-  if (obj._) {
-    obj._ += 1;
-  } else {
-    obj._ = Date.now();
-  }
+  var timestamp = ~Date.now();
   
   var uuid = obj.uuid;
   var display = obj.display;
   // 检查登录和跳转
   var p = new Promise((resolve, reject)=> {
-    var checkUrl = `https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=${obj.tip}&uuid=${uuid}&_=${obj._}` // 参数r意义不明，应该是时间戳
+    var checkUrl = `https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=${obj.tip}&uuid=${uuid}&r=${timestamp}` 
     request(checkUrl,
             (error, response, body)=>{
               if (error) {
@@ -106,10 +101,8 @@ function checkLogin(obj) {
                 // NOTE: 在这里我试了一会儿
                 // 关键是对promise的理解。
                 // !! 总结！！
-                // setTimeout(()=>{
                 console.log("已扫描，请点击确认登录");
                 resolve(checkLogin(obj)); 
-                //}, 1000); 
               } else if(/window\.code=408/.test(body)){
                 resolve(checkLogin(obj));
               } else {
