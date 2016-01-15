@@ -411,7 +411,7 @@ function webwxsync(obj) {
 
 function robot(obj) {
   // 现在的设计是依靠syncheck每次服务器关闭和返回
-  // TODO:需要有对超时的自动处理机制。
+  // FIXME:需要有对底层网络问题的自动处理机制。
   synccheck(obj).
     then(webwxsync).
     then(botSpeak).then(robot).
