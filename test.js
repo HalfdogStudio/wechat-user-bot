@@ -5,12 +5,12 @@ var inspect = require('util').inspect;
 var request = require('request');
 var reply = require('./dialog.js').turingRobot;
 
-var baseUrl = 'https://wx.qq.com'
 
 var getUUID = new Promise((resolve, reject)=>{
   var param = {
     appid: 'wx782c26e4c19acffb',
     fun: 'new',
+    redirect_uri: 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxnewloginpage',
     lang: 'en_US',
     _: Date.now()
   }
@@ -312,7 +312,7 @@ function synccheck(obj) {
         //_: 一个看上去像timestamp但每次递增1的不知道啥
       },
       jar: true,
-      timeout: 60000, // FIXME: 试着玩，默认多少来着
+      timeout: 35000, // 源码这么写的
     }
 
     request(options, (error, response, body)=>{
