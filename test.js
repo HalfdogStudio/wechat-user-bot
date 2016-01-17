@@ -382,11 +382,15 @@ function webwxsync(obj) {
           // FIXME: Newsgrp这种
           // 自定义过滤
           // Web 微信中at与不at消息是一样的，而我暂时没发现怎样获得我的群名片，似乎是并无明显方法获得。
-          // FIXME: 规则
-          if (o.FromUserName.startsWith("@@") && (!o.Content.includes("@小寒粉丝团") || !(!o.Content.includes("@狂风落尽深红色绿树成荫子满枝")))) {
-            // 群消息且at我在某个群的群昵称
-            continue;
+          // FIXME: 规则HOOK设计
+          if (o.FromUserName.startsWith("@@")) {
+            var p = handleGroup(o.FromUserName, o.Content, obj);
+            p.then(console.log, console.log);
           }
+          // if (o.FromUserName.startsWith("@@") && (!o.Content.includes("@小寒粉丝团") || !(!o.Content.includes("@狂风落尽深红色绿树成荫子满枝")))) {
+          //   // 群消息且at我在某个群的群昵称
+          //   continue;
+          // }
 
           // 有意思的东西哈哈
           o.Content = o.Content.replace(/@小寒粉丝团团员丙/g, '喂, ');
@@ -442,3 +446,59 @@ getUUID.
   then(getContact).
   then(robot).
   catch(console.error);
+
+// handle Group User Name Resolution
+// version 0.1 通过batchgetcontact获取群成员
+//
+// 更好的方法是先看contact里有没，再这样看，并且缓存，根据modcontact更新
+
+function handleGroup(groupName, replyContent, obj) {
+  var p = new Promise((resolve, reject)=>{
+    // debug("groupName:" + groupName);
+    // debug("replyContent: " + replyContent);
+    var result = /^(@[^:]+):<br\/>/mg.exec(replyContent);
+    if (result) {
+      var fromUserName = result[1];
+    }
+    var postData = {
+      BaseRequest: obj.BaseRequest,
+      Count: 1,
+      List: [
+        {
+          UserName: groupName,
+          EncryChatRoomId: "",
+        }
+      ]
+    };
+    request.post(`https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxbatchgetcontact`,
+                 {
+                   qs: {
+                     type: 'ex',
+                     r: Date.now(),
+                   },
+                   body: postData,
+                   json: true,
+                   jar: true,
+                 },
+                 (error, response, body)=> {
+                   //console.log(body);
+                   if (error) {
+                     reject(error)
+                   }
+                   if (body.BaseResponse.Ret != 0) {
+                      reject(body.BaseResponse.ErrMsg);
+                   }
+                   var group = body.ContactList[0]
+                   var groupRealName = group.NickName;
+                   var EncryChatRoomId = group.EncryChatRoomId;
+                   var memberList = group.MemberList;
+                   for (let m of memberList) {
+                      if (fromUserName && (fromUserName == m.UserName)) {
+                        var nickName = m.NickName;
+                        console.log(nickName + ": " + replyContent.replace(fromUserName, ''));
+                      }
+                   }
+                 });
+  });
+  return p;
+}
