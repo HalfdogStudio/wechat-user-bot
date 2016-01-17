@@ -106,7 +106,9 @@ function checkLogin(obj) {
               } else if(/window\.code=408/.test(body)){
                 resolve(checkLogin(obj));
               } else {
-                console.log("登录错误，退出程序...")
+                console.log("验证码超时...")
+                display.kill();
+                processExit(1);
               }
             });
   });
@@ -299,6 +301,7 @@ function synccheck(obj) {
     }
 
     request(options, (error, response, body)=>{
+      // console.log("synccheck:" + inspect(obj.SyncKey));
       if (error) {
         reject(error);
       }
@@ -349,6 +352,7 @@ function webwxsync(obj) {
     // 当promise遇上循环
     // 请在评论教我该怎么在循环中优雅地使用Promise。。。
     request(options, (error, response, body)=>{
+      // console.log("websync:" + inspect(obj.SyncKey));
       // fs.writeFile('webwxsync.json', JSON.stringify(body));
       // 更新 synckey
       obj.SyncKey = body.SyncKey;
@@ -410,8 +414,6 @@ function webwxsync(obj) {
 }
 
 function robot(obj) {
-  // 现在的设计是依靠syncheck每次服务器关闭和返回
-  // FIXME:需要有对底层网络问题的自动处理机制。
   synccheck(obj).
     then(webwxsync).
     then(botSpeak).then(robot).
@@ -438,8 +440,5 @@ getUUID.
   then(getbaseRequest).
   then(webwxinit).
   then(getContact).
-  //then(webwxstatusnotify).
   then(robot).
-  //then(botSpeak).
   catch(console.error);
-
