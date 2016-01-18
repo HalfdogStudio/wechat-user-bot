@@ -5,6 +5,8 @@ var inspect = require('util').inspect;
 var request = require('request');
 var reply = require('./dialog.js').turingRobot;
 
+const MSGTYPE_TEXT = 1;
+
 
 var getUUID = new Promise((resolve, reject)=>{
   var param = {
@@ -45,7 +47,7 @@ function checkAndParseUUID(text) {
 }
 
 function handleError(e) {
-  console.log(e);
+  console.error(e);
 }
 
 function showQRImage(uuid) {
@@ -346,70 +348,47 @@ function webwxsync(obj) {
     //debug("options in webwxsync: \n" + inspect(options));
     //debug("postData in webwxsync: \n" + inspect(postData));
 
-    // synccheck检查是否需要webwxsync
-    // webwxsync检查是否有更新
-    // 继续synccheck啥的。。。我猜
-    // 当promise遇上循环
     // 请在评论教我该怎么在循环中优雅地使用Promise。。。
     request(options, (error, response, body)=>{
       // console.log("websync:" + inspect(obj.SyncKey));
       // fs.writeFile('webwxsync.json', JSON.stringify(body));
       // 更新 synckey
       obj.SyncKey = body.SyncKey;
-      // 或者AddMsgCount 为 1
       //debug("in websync body: " + inspect(body))
       if (body.AddMsgCount = 0) {
         return;
       }
-      // FIXME: 
       // 这个设计可能有问题，Promise数组
       // 这段异步逻辑非常绕，我尝试这里说明
       // obj.MsgToUserAndSend 来搜集这次websync得到的所有待回复的消息(打包用户名和回复内容)
       // replyPromise代表未来某个时刻的回复
-      // ps代表这次websync得到的需要回复的消息(可能多条)对应的replyPromise的数组
-      // 只有ps钟所有reply都获得了，这时obj.MsgToUserAndSend就包含所有待回复打包消息，就可以把obj送给下一个then注册的函数处理。在robot中，websync下一个是botSpeak,就是回复函数。
-      var ps = [];
+      // replys代表这次websync得到的需要回复的消息(可能多条)对应的replyPromise的数组
+      // 只有replys钟所有reply都获得了，这时obj.MsgToUserAndSend就包含所有待回复打包消息，就可以把obj送给下一个then注册的函数处理。在robot中，websync下一个是botSpeak,就是回复函数。
+      var replys = [];    // 用来代表回复信息的Promises Array
       for (var o of body.AddMsgList) {
-        // TODO: 各种消息类型情况
-        if ((o.MsgType == 1) && (o.ToUserName == obj.username)) { //给我
-          //debug("in webwxsync someone call me:" + inspect(o));
-          // 查询用户名昵称
-          for (var i = 0; i < obj.memberList.length; i++) {
-            if (obj.memberList[i]['UserName'] == o.FromUserName) 
-              console.log('[' + obj.memberList[i]['NickName'] + ' 说]', o.Content);
-          }
-          // 过滤特殊用户组消息
-          // FIXME: Newsgrp这种
-          // 自定义过滤
-          // Web 微信中at与不at消息是一样的，而我暂时没发现怎样获得我的群名片，似乎是并无明显方法获得。
-          // FIXME: 规则HOOK设计
-          if (o.FromUserName.startsWith("@@")) {
-            var p = handleGroup(o.FromUserName, o.Content, obj);
-            p.then(console.log, console.log);
-          }
-          // if (o.FromUserName.startsWith("@@") && (!o.Content.includes("@小寒粉丝团") || !(!o.Content.includes("@狂风落尽深红色绿树成荫子满枝")))) {
-          //   // 群消息且at我在某个群的群昵称
-          //   continue;
-          // }
-
-          // 有意思的东西哈哈
-          o.Content = o.Content.replace(/@小寒粉丝团团员丙/g, '喂, ');
-          o.Content = o.Content.replace(/@狂风落尽深红色绿树成荫子满枝/g, '喂, ');
-
-          var username = o.FromUserName;  // 闭包,防止串号，血泪教训
-          var replyPromise = reply(o.Content, o.FromUserName);
-          replyPromise.then(rep=>{
-            // debug("in ps reps promise:" + inspect(username))
-            // debug("in ps reps promise:" + inspect(rep))
-            obj.MsgToUserAndSend.push({
-              User: username,
-              Msg: "[WeChatBot]: " + rep,
-            });
-          });
-          ps.push(replyPromise);
+        if (!(o.ToUserName == obj.username)) {
+          continue; // 如果我不是目标用户，这种情况怎么可能发生
+        }
+        // 打印逻辑
+        switch (o.MsgType) {
+          case MSGTYPE_TEXT:
+            logTextMessage(o, obj)
+            break;
+          default:
+            logNotImplementMsg(o, obj);
+        }
+        // 回复逻辑
+        switch (o.MsgType) {
+          case MSGTYPE_TEXT:
+            if (generateTextMessage(o, obj, replys) == 'ignore') {
+              continue;
+            }
+            break;
+          default:
+            generateNotImplementMsg(o, obj);
         }
       }
-      Promise.all(ps).then(()=>{
+      Promise.all(replys).then(()=>{
         resolve(obj);
       });
     });
@@ -421,7 +400,7 @@ function robot(obj) {
   synccheck(obj).
     then(webwxsync).
     then(botSpeak).then(robot).
-    catch(console.log);
+    catch(handleError);
 }
 
 function passWebwxsync(obj) {
@@ -490,15 +469,71 @@ function handleGroup(groupName, replyContent, obj) {
                    }
                    var group = body.ContactList[0]
                    var groupRealName = group.NickName;
+                   // 这个EncryChatRoomId什么用处
                    var EncryChatRoomId = group.EncryChatRoomId;
                    var memberList = group.MemberList;
                    for (let m of memberList) {
                       if (fromUserName && (fromUserName == m.UserName)) {
                         var nickName = m.NickName;
-                        console.log(nickName + ": " + replyContent.replace(fromUserName, ''));
+                        console.log("[" + groupRealName + "]" + nickName + ": " + replyContent.replace(fromUserName, '').replace("<br/>", ""));
                       }
                    }
                  });
   });
   return p;
 }
+
+function logTextMessage(o, obj) {
+  //debug("in webwxsync someone call me:" + inspect(o));
+  // 查询用户名昵称
+  if (o.FromUserName.startsWith("@@")) {
+    logGroupMsg(o, obj);
+  } else {
+    logPrivateMsg(o, obj);
+  }
+}
+
+function logPrivateMsg(o, obj) {
+  for (var i = 0; i < obj.memberList.length; i++) {
+    if (obj.memberList[i]['UserName'] == o.FromUserName) 
+      console.log('[' + obj.memberList[i]['NickName'] + ' 说]', o.Content);
+  }
+}
+
+function logGroupMsg(o, obj) {
+  var p = handleGroup(o.FromUserName, o.Content, obj);
+  p.then(console.log, console.error);
+}
+
+function generateTextMessage(o, obj, ps, resolve, reject) {
+  if (o.FromUserName.startsWith("@@") && (o.Content.includes("@小寒粉丝团团员丙") || o.Content.includes("@狂风落尽深红色绿树成荫子满枝"))) {
+    // FIXME: at 我, 在Username NickName和群的displayName里
+    o.Content = o.Content.replace(/@小寒粉丝团团员丙/g, '喂, ');
+    o.Content = o.Content.replace(/@狂风落尽深红色绿树成荫子满枝/g, '喂, ');
+  } else if (o.FromUserName.startsWith("@@")) {
+    return;
+  }
+
+  // 回复
+  var username = o.FromUserName;  // 闭包,防止串号，血泪教训
+  var replyPromise = reply(o.Content, o.FromUserName);
+  replyPromise.then(rep=>{
+    // debug("in ps reps promise:" + inspect(username))
+    // debug("in ps reps promise:" + inspect(rep))
+    obj.MsgToUserAndSend.push({
+      User: username,
+      Msg: "[WeChatBot]: " + rep,
+    });
+  });
+  ps.push(replyPromise);
+}
+
+function logNotImplementMsg(o) {
+  console.error("not implement msg type: " + o.MsgType);
+}
+
+function generateNotImplementMsg(o) {
+  console.error("not implement msg type: " + o.MsgType);
+}
+
+function ignore() {};
