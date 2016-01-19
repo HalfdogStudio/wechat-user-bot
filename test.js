@@ -3,7 +3,7 @@ var child_process = require('child_process');
 var debug = (text)=>console.error("[DEBUG]", text);
 var inspect = require('util').inspect;
 var request = require('request');
-var reply = require('./dialog.js').turingRobot;
+var reply = require('./dialog.js').magic;
 
 // FIXME: 将全局常量声明分离到其他文件
 const MSGTYPE_TEXT = 1;
@@ -202,6 +202,7 @@ function webwxinit(obj) {
       //debug("In webwxinit body: " + inspect(body));
       // fs.writeFile('init.json', JSON.stringify(body));
       obj.username = body['User']['UserName'];
+      obj.nickname = body['User']['NickName'];
       obj.SyncKey = body['SyncKey'];
       //debug("My username: " + obj.username)
       resolve(obj);
@@ -270,8 +271,8 @@ function botSpeak(obj) {
       //debug("options in botSpeak: \n" + inspect(options));
       //debug("postData in botSpeak: \n" + inspect(postData));
 
-      console.log("[机器人回复]", msgBundle.Msg);
       request(options, (error, response, body)=>{
+        console.log("[机器人回复]", msgBundle.Msg);
         // debug("in botSpeak ret: " + inspect(body));
       })
     }
@@ -517,8 +518,9 @@ function logTextMessage(o, obj) {
 
 function logPrivateMsg(o, obj) {
   for (var i = 0; i < obj.memberList.length; i++) {
-    if (obj.memberList[i]['UserName'] == o.FromUserName) 
+    if (obj.memberList[i]['UserName'] == o.FromUserName) {
       console.log('[' + obj.memberList[i]['NickName'] + ' 说]', o.Content);
+    }
   }
 }
 
@@ -528,9 +530,10 @@ function logGroupMsg(o, obj) {
 }
 
 function generateTextMessage(o, obj, ps, resolve, reject) {
-  if (o.FromUserName.startsWith("@@") && (o.Content.includes("@robot"))) {
+  if (o.FromUserName.startsWith("@@") && (o.Content.includes("@" + obj.nickname))) {
     // FIXME: at 我, 在Username NickName和群的displayName里
-    o.Content = o.Content.replace(/@robot/g, '喂, ');
+    // FIXME: 正则escape
+    o.Content = o.Content.replace(new RegExp('@' + obj.nickname), '喂, ');
   } else if (o.FromUserName.startsWith("@@")) {
     // 群信息则不回复
     return;
@@ -544,7 +547,7 @@ function generateTextMessage(o, obj, ps, resolve, reject) {
     // debug("in ps reps promise:" + inspect(rep))
     obj.MsgToUserAndSend.push({
       User: username,
-      Msg: "> " + rep,
+      Msg: rep,
     });
   });
   ps.push(replyPromise);

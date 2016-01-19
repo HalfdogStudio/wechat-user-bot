@@ -136,22 +136,23 @@ function baiduDirect(content) {
   }
 }
 
-function magic(content) {
+function magic(content, userid) {
   // TODO: a magic trigger engine
   var result;
   var map = new Map();
   // map顺序其实是固定的，参见hacks.mozilla.org
   map.set(/好不好/g, '吼啊！');
-  map.set(/(也支持)|(支持不支持)/g, '当然啦！');
-  map.set(/那么早就说要([\u4E00-\u9FD5]+)，会不会给人感觉是([\u4E00-\u9FD5]+)/g, '任何事，也要按照基本法！按照$1来进行。刚才你问我，我可以回答一句「无可奉告」，但是你们又不高兴，我怎么办？我讲的意思不是要$2。你问我支持不支持，我说支持。我就明确告诉你这一点。我感觉你们文化界还需要学习，你们毕竟还是 too young ，你明白这意思吧？我告诉你们我是身经百战了，见得多了！');
-  map.set(/谈笑风生/g, '北邮的邱神你知道么，比你高到不知哪里去了，我跟他谈笑风生，所以说你还需要学习一个。');
-  map.set(/学习一个/g, '所以说你们还是要提高自己的知识水平，识得唔识得啊？我为你们感到拙计呀……');
+  map.set(/那么早就说要([\u4E00-\u9FD5]+)，会不会给人感觉是([\u4E00-\u9FD5]+)/g, '任何事，也要按照基本法！按照$1法来进行。刚才你问我，我可以回答一句「无可奉告」，但是你们又不高兴，我怎么办？我讲的意思不是要$2。你问我支持不支持，我说支持。我就明确告诉你这一点。我感觉你们文化界还需要学习，你们毕竟还是 too young ，你明白这意思吧？我告诉你们我是身经百战了，见得多了！');
+  map.set(/(支持)|(支不支持)|(支持不支持)/g, '当然啦！');
+  map.set(/(exciting)|(激动)|(感动)/g, '亦可赛艇！');
+  map.set(/(谈笑风生)|(高到)|(不知哪里)/g, '北邮的邱神你知道么，比你高到不知哪里去了，我跟他谈笑风生，所以说你还需要学习一个。');
+  map.set(/学习(一个)?/g, '所以说你们还是要提高自己的知识水平，识得唔识得啊？我为你们感到拙计呀……');
   map.set(/([\u4E00-\u9FD5]来[\u4E00-\u9FD5]去)/g, '你们有一个好，全世界跑到什么地方，你们比北邮的学生找工作跑得都快，但是$1这个水平呀，都 too simple ， sometimes naive ！懂了没有？');
   map.set(/(simple)|naive/ig, '你们啊！too simple ， sometimes naive ！懂了没有？');
-  map.set(/这样热情/g, '但是我想我见到你们这样热情，一句话不说也不好。');
+  map.set(/(热情)|(不说话)/g, '但是我想我见到你们这样热情，一句话不说也不好。');
   map.set(/(发大财)|(发财)/g, '中国有一句话叫「闷声发大财」，我就什么话也不说，这是最好的。');
-  map.set(/要负责/g, '在宣传上将来如果你们报道上有偏差，你们要负责任。');
-  map.set(/人生经验/g, '我有必要告诉你们一些人生的经验……');
+  map.set(/(负责)|(责任)/g, '在宣传上将来如果你们报道上有偏差，你们要负责任。');
+  map.set(/(人生)|(经验)/g, '我有必要告诉你们一些人生的经验……');
   map.set(/大新闻/g, '你们不要想喜欢弄个大新闻，说现在已经定了，把我批判一番。');
   map.set(/naive/ig, '你们啊，naive！');
   map.set(/(angry)|很生气/ig, 'I am angry！你们这样子是不行的！我今天算是得罪了你们一下。');
@@ -160,7 +161,7 @@ function magic(content) {
       return Promise.resolve(result[0].replace(reg[0], reg[1]));
     }
   }
-  return Promise.resolve("我见得太多了");
+  return Promise.resolve(turingRobot(content, userid));
 }
 
 module.exports.turingRobot = turingRobot;
