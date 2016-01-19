@@ -173,6 +173,10 @@ function getbaseRequest(text) {
 function webwxinit(obj) {
   console.log("登录成功，初始化");
   // FIXME: 初始化的时候初始化用户名和发送？作为全局好像也行？
+  // 参见uproxy_wechat，使用面向对象的方式实现变量传递
+  // 为啥这样会赋值undefined, 可能因为groupContact写成groupContactr了。。
+  // obj.groupContact = new Map();
+  obj.groupContact = Object.create(null);
   obj.MsgToUserAndSend = [];
   var p = new Promise((resolve, reject)=> {
     //debug("in webwxinit obj:\n" + inspect(obj));
@@ -358,12 +362,7 @@ function webwxsync(obj) {
       if (body.AddMsgCount = 0) {
         return;
       }
-      // 这个设计可能有问题，Promise数组
-      // 这段异步逻辑非常绕，我尝试这里说明
-      // obj.MsgToUserAndSend 来搜集这次websync得到的所有待回复的消息(打包用户名和回复内容)
-      // replyPromise代表未来某个时刻的回复
-      // replys代表这次websync得到的需要回复的消息(可能多条)对应的replyPromise的数组
-      // 只有replys钟所有reply都获得了，这时obj.MsgToUserAndSend就包含所有待回复打包消息，就可以把obj送给下一个then注册的函数处理。在robot中，websync下一个是botSpeak,就是回复函数。
+
       var replys = [];    // 用来代表回复信息的Promises Array
       for (var o of body.AddMsgList) {
         if (!(o.ToUserName == obj.username)) {
@@ -431,57 +430,76 @@ getUUID.
 //
 // 更好的方法是先看contact里有没，再这样看，并且缓存，根据modcontact更新
 
-function handleGroup(groupName, replyContent, obj) {
+function handleGroup(groupUserName, replyContent, obj) {
   var p = new Promise((resolve, reject)=>{
-    // debug("groupName:" + groupName);
+    // debug("groupUserName:" + groupUserName);
     // debug("replyContent: " + replyContent);
     var result = /^(@[^:]+):<br\/>/mg.exec(replyContent);
     if (result) {
       var fromUserName = result[1];
     }
-    var postData = {
-      BaseRequest: obj.BaseRequest,
-      Count: 1,
-      List: [
-        {
-          UserName: groupName,
-          EncryChatRoomId: "",
-        }
-      ]
-    };
-    request.post(`https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxbatchgetcontact`,
-                 {
-                   qs: {
-                     type: 'ex',
-                     r: Date.now(),
+    // 查看是否缓存中有
+    if (!(groupUserName in obj.groupContact)) {
+      var postData = {
+        BaseRequest: obj.BaseRequest,
+        Count: 1,
+        List: [
+          {
+            UserName: groupUserName,
+            EncryChatRoomId: "",
+          }
+        ]
+      };
+      request.post(`https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxbatchgetcontact`,
+                   {
+                     qs: {
+                       type: 'ex',
+                       r: Date.now(),
+                     },
+                     body: postData,
+                     json: true,
+                     jar: true,
                    },
-                   body: postData,
-                   json: true,
-                   jar: true,
-                 },
-                 (error, response, body)=> {
-                   //console.log(body);
-                   if (error) {
-                     reject(error)
-                   }
-                   if (body.BaseResponse.Ret != 0) {
-                      reject(body.BaseResponse.ErrMsg);
-                   }
-                   var group = body.ContactList[0]
-                   var groupRealName = group.NickName;
-                   // 这个EncryChatRoomId什么用处
-                   var EncryChatRoomId = group.EncryChatRoomId;
-                   var memberList = group.MemberList;
-                   for (let m of memberList) {
-                      if (fromUserName && (fromUserName == m.UserName)) {
-                        var nickName = m.NickName;
-                        console.log("[" + groupRealName + "]" + nickName + ": " + replyContent.replace(fromUserName, '').replace("<br/>", ""));
-                      }
-                   }
-                 });
+                   (error, response, body)=> {
+                     //console.log(body);
+                     if (error) {
+                       reject(error)
+                     }
+                     if (body.BaseResponse.Ret != 0) {
+                       reject(body.BaseResponse.ErrMsg);
+                     }
+                     var group = body.ContactList[0]
+                     var groupRealName = group.NickName;
+                     // FIXME:这个EncryChatRoomId什么用处，干脆用来做唯一的键吧
+                     var encryChatRoomId = group.EncryChatRoomId;
+                     var memberList = group.MemberList;
+                     obj.groupContact[groupUserName] = {
+                       memberList: memberList,
+                       nickName: groupRealName, 
+                     };
+                     _logGroupTextMsg();
+                   });
+    } else {
+      _logGroupTextMsg();
+    }
+
+    // 记录群消息函数
+    function _logGroupTextMsg() {
+      // 直接更新
+      for (let m of obj.groupContact[groupUserName]['memberList']) {
+        if (fromUserName && (fromUserName == m.UserName)) {
+          var nickName = m.NickName;
+          var groupRealName = obj.groupContact[groupUserName]['nickName'];
+          resolve("[" + groupRealName + "]" + nickName + replyContent.replace(fromUserName, '').replace("<br/>", ""));
+        }
+      }
+    }
   });
   return p;
+
 }
+
+
 
 function logTextMessage(o, obj) {
   //debug("in webwxsync someone call me:" + inspect(o));
