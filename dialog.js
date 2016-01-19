@@ -27,8 +27,8 @@ function turingRobot(content, userid) {
         json: true,
       },
       (error, response, body)=>{
-        if (error) {
-          reject(error);
+        if (error || !body) {
+          reject(error?error:"turing robot return no body");
         }
         //debug("in turing machine: " + inspect(body))
         if (body.code == 100000) {

@@ -5,8 +5,9 @@ var inspect = require('util').inspect;
 var request = require('request');
 var reply = require('./dialog.js').turingRobot;
 
+// FIXME: 将全局常量声明分离到其他文件
 const MSGTYPE_TEXT = 1;
-
+const SPECIAL_USERS = 'newsapp,fmessage,filehelper,weibo,qqmail,fmessage,tmessage,qmessage,qqsync,floatbottle,lbsapp,shakeapp,medianote,qqfriend,readerapp,blogapp,facebookapp,masssendapp,meishiapp,feedsapp,voip,blogappweixin,weixin,brandsessionholder,weixinreminder,wxid_novlwrv3lqwv11,gh_22b87fa7cb3c,officialaccounts,notification_messages,wxid_novlwrv3lqwv11,gh_22b87fa7cb3c,wxitil,userexperience_alarm,notification_messages';
 
 var getUUID = new Promise((resolve, reject)=>{
   var param = {
@@ -365,8 +366,13 @@ function webwxsync(obj) {
 
       var replys = [];    // 用来代表回复信息的Promises Array
       for (var o of body.AddMsgList) {
+        // TODO: 将各种逻辑穿插设计
+        // 过滤处理逻辑
         if (!(o.ToUserName == obj.username)) {
           continue; // 如果我不是目标用户，这种情况怎么可能发生
+        }
+        if (SPECIAL_USERS.indexOf(o.FromUserName) >= 0) {
+          continue; // 不处理特殊用户
         }
         // 打印逻辑
         switch (o.MsgType) {
