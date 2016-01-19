@@ -385,9 +385,7 @@ function webwxsync(obj) {
         // 回复逻辑
         switch (o.MsgType) {
           case MSGTYPE_TEXT:
-            if (generateTextMessage(o, obj, replys) == 'ignore') {
-              continue;
-            }
+            generateTextMessage(o, obj, replys);
             break;
           default:
             generateNotImplementMsg(o, obj);
@@ -530,11 +528,11 @@ function logGroupMsg(o, obj) {
 }
 
 function generateTextMessage(o, obj, ps, resolve, reject) {
-  if (o.FromUserName.startsWith("@@") && (o.Content.includes("@小寒粉丝团团员丙") || o.Content.includes("@狂风落尽深红色绿树成荫子满枝"))) {
+  if (o.FromUserName.startsWith("@@") && (o.Content.includes("@robot"))) {
     // FIXME: at 我, 在Username NickName和群的displayName里
-    o.Content = o.Content.replace(/@小寒粉丝团团员丙/g, '喂, ');
-    o.Content = o.Content.replace(/@狂风落尽深红色绿树成荫子满枝/g, '喂, ');
+    o.Content = o.Content.replace(/@robot/g, '喂, ');
   } else if (o.FromUserName.startsWith("@@")) {
+    // 群信息则不回复
     return;
   }
 
@@ -546,7 +544,7 @@ function generateTextMessage(o, obj, ps, resolve, reject) {
     // debug("in ps reps promise:" + inspect(rep))
     obj.MsgToUserAndSend.push({
       User: username,
-      Msg: "[WeChatBot]: " + rep,
+      Msg: "> " + rep,
     });
   });
   ps.push(replyPromise);
