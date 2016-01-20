@@ -2,6 +2,7 @@
 var request = require('request');
 var inspect = require('util').inspect;
 var apikeys = require('./apikeys.js')
+// var magic = require('./magic/magic.js')
 
 // 我正准备申请答辩
 function thesis(content) {
@@ -31,17 +32,22 @@ function turingRobot(content, userid) {
           reject(error?error:"turing robot return no body");
         }
         //debug("in turing machine: " + inspect(body))
-        if (body.code == 100000) {
-          resolve(body.text);
-        } else if (body.code == 200000) {
-          resolve(body.text + ": " + body.url);
-        } else if (body.code == 302000) {
-          resolve(body.list.map(n=>n.article + ": " + n.detailurl).join('\n'));
-        } else if (body.code == 308000) {
-          resolve(body.text + '\n' + body.list.map(n=>n.name + ": " + n.info + "<" + n.detailurl + ">").join('\n'));
-        } else {
-          reject(body.code + body.text);
-        } 
+        try {
+          body.text = body.text.replace(/<\s*br\s*\/?\s*>/g, '\n');
+          if (body.code == 100000) {
+            resolve(body.text);
+          } else if (body.code == 200000) {
+            resolve(body.text + ": " + body.url);
+          } else if (body.code == 302000) {
+            resolve(body.list.map(n=>n.article + ": " + n.detailurl).join('\n'));
+          } else if (body.code == 308000) {
+            resolve(body.text + '\n' + body.list.map(n=>n.name + ": " + n.info + "<" + n.detailurl + ">").join('\n'));
+          } else {
+            reject(body.code + body.text);
+          } 
+        } catch(e) {
+          reject(e);
+        }
       });
   });
 }
