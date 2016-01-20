@@ -362,23 +362,28 @@ function webwxsync(obj) {
       obj.SyncKey = body.SyncKey;
       //debug("in websync body: " + inspect(body))
       
-      // FIXME: 更新群信息和个人信息（未确认作用！！)
+      // FIXME: 更新群信息和个人信息
       // 忽然发现用不着更新群信息，如果想要解析用户名的人员不存在，那么就通过batchgetcontact来获取就好。
       for (var o of body.ModContactList) {
-        if (o.UserName.startsWith('@@')) {
+        if (o.UserName.startsWith('@@')) {  // 群组
           obj.groupContact[o.UserName] = {
             nickName: o.NickName,
             memberList: o.MemberList,
           }
-        } else {
+        } else {  // 用户
           var length = obj.memberList.length
+          let find = false;
           for (let i = 0; i < length; i++) {
             let user = obj.memberList[i];
             if (user['UserName'] == o.UserName) {
-              user = o;
-            } else {
-              obj.memberList.push(o);
-            }
+              ojb.memberList[i] = o;
+              find = true;
+              break;
+            } 
+          }
+          // 如果没有找到
+          if (!find) {
+            obj.memberList.push(o);
           }
         }
       }
