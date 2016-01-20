@@ -7,7 +7,7 @@ var reply = require('./dialog.js').magic;
 
 // FIXME: 将全局常量声明分离到其他文件
 const MSGTYPE_TEXT = 1;
-const SPECIAL_USERS = 'newsapp,fmessage,filehelper,weibo,qqmail,fmessage,tmessage,qmessage,qqsync,floatbottle,lbsapp,shakeapp,medianote,qqfriend,readerapp,blogapp,facebookapp,masssendapp,meishiapp,feedsapp,voip,blogappweixin,weixin,brandsessionholder,weixinreminder,wxid_novlwrv3lqwv11,gh_22b87fa7cb3c,officialaccounts,notification_messages,wxid_novlwrv3lqwv11,gh_22b87fa7cb3c,wxitil,userexperience_alarm,notification_messages';
+const SPECIAL_USERS = 'newsapp,fmessage,filehelper,weibo,qqmail,fmessage,tmessage,qmessage,qqsync,floatbottle,lbsapp,shakeapp,medianote,qqfriend,readerapp,blogapp,facebookapp,masssendapp,meishiapp,feedsapp,voip,blogappweixin,weixin,brandsessionholder,weixinreminder,officialaccounts,notification_messages,wxitil,userexperience_alarm,notification_messages';
 
 var getUUID = new Promise((resolve, reject)=>{
   var param = {
@@ -361,8 +361,26 @@ function webwxsync(obj) {
       // 更新 synckey
       obj.SyncKey = body.SyncKey;
       //debug("in websync body: " + inspect(body))
-      if (body.AddMsgCount = 0) {
-        return;
+      
+      // FIXME: 更新群信息和个人信息（未确认作用！！)
+      // 忽然发现用不着更新群信息，如果想要解析用户名的人员不存在，那么就通过batchgetcontact来获取就好。
+      for (var o of body.ModContactList) {
+        if (o.UserName.startsWith('@@')) {
+          obj.groupContact[o.UserName] = {
+            nickName: o.NickName,
+            memberList: o.MemberList,
+          }
+        } else {
+          var length = obj.memberList.length
+          for (let i = 0; i < length; i++) {
+            let user = obj.memberList[i];
+            if (user['UserName'] == o.UserName) {
+              user = o;
+            } else {
+              obj.memberList.push(o);
+            }
+          }
+        }
       }
 
       var replys = [];    // 用来代表回复信息的Promises Array
@@ -379,7 +397,7 @@ function webwxsync(obj) {
         switch (o.MsgType) {
           case MSGTYPE_TEXT:
             logTextMessage(o, obj)
-            break;
+          break;
           default:
             logNotImplementMsg(o, obj);
         }
@@ -387,7 +405,7 @@ function webwxsync(obj) {
         switch (o.MsgType) {
           case MSGTYPE_TEXT:
             generateTextMessage(o, obj, replys);
-            break;
+          break;
           default:
             generateNotImplementMsg(o, obj);
         }
@@ -433,7 +451,6 @@ getUUID.
 // handle Group User Name Resolution
 // version 0.1 通过batchgetcontact获取群成员
 //
-// 更好的方法是先看contact里有没，再这样看，并且缓存，根据modcontact更新
 
 function handleGroup(groupUserName, replyContent, obj) {
   var p = new Promise((resolve, reject)=>{
@@ -475,8 +492,6 @@ function handleGroup(groupUserName, replyContent, obj) {
                      }
                      var group = body.ContactList[0]
                      var groupRealName = group.NickName;
-                     // FIXME:这个EncryChatRoomId什么用处，干脆用来做唯一的键吧
-                     var encryChatRoomId = group.EncryChatRoomId;
                      var memberList = group.MemberList;
                      obj.groupContact[groupUserName] = {
                        memberList: memberList,
@@ -517,12 +532,72 @@ function logTextMessage(o, obj) {
 }
 
 function logPrivateMsg(o, obj) {
-  for (var i = 0; i < obj.memberList.length; i++) {
-    if (obj.memberList[i]['UserName'] == o.FromUserName) {
-      console.log('[' + obj.memberList[i]['NickName'] + ' 说]', o.Content);
-    }
-  }
+  var p = handlePrivate(o.FromUserName, o.Content, obj);
+  p.then(console.log, console.error);
 }
+
+function handlePrivate(username, replyContent, obj) {
+  // 如果没找到，请求啊
+  function _has(list, username) {
+    for (let l of list) {
+      if (l['UserName'] == username) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  var p = new Promise((resolve, reject)=>{
+    if (!_has(obj.memberList, username)) {
+      var postData = {
+        BaseRequest: obj.BaseRequest,
+        Count: 1,
+        List: [
+          {
+            UserName: username,
+            EncryChatRoomId: "",
+          }
+        ]
+      };
+      request.post(`https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxbatchgetcontact`,
+                   {
+                     qs: {
+                       type: 'ex',
+                       r: Date.now(),
+                     },
+                     body: postData,
+                     json: true,
+                     jar: true,
+                   },
+                   (error, response, body)=> {
+                     //console.log(body);
+                     if (error) {
+                       reject(error)
+                     }
+                     if (body.BaseResponse.Ret != 0) {
+                       reject(body.BaseResponse.ErrMsg);
+                     }
+                     var user = body.ContactList[0]
+                     obj.memberList.push(user);
+                     _logPrivateTextMsg();
+                   });
+    } else {
+      _logPrivateTextMsg();
+    }
+
+    function _logPrivateTextMsg() {
+      for (var i = 0; i < obj.memberList.length; i++) {
+        if (obj.memberList[i]['UserName'] == username) {
+          console.log('[' + obj.memberList[i]['NickName'] + ' 说]', replyContent);
+          return;
+        }
+      }
+    }
+
+  });
+  return p;
+}
+
 
 function logGroupMsg(o, obj) {
   var p = handleGroup(o.FromUserName, o.Content, obj);
@@ -530,6 +605,10 @@ function logGroupMsg(o, obj) {
 }
 
 function generateTextMessage(o, obj, ps, resolve, reject) {
+  // 过滤符号
+  o.Content = o.Content.replace(/<\s*br\s*\/?\s*>/g, '\n');
+  // FIXME: 表情符号修正
+
   if (o.FromUserName.startsWith("@@") && (o.Content.includes("@" + obj.nickname))) {
     // FIXME: at 我, 在Username NickName和群的displayName里
     // FIXME: 正则escape
@@ -547,7 +626,7 @@ function generateTextMessage(o, obj, ps, resolve, reject) {
     // debug("in ps reps promise:" + inspect(rep))
     obj.MsgToUserAndSend.push({
       User: username,
-      Msg: rep,
+      Msg: "bot>" + rep,
     });
   });
   ps.push(replyPromise);
