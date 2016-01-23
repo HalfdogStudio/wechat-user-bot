@@ -73,7 +73,7 @@ http.createServer((serverReq, serverRes)=>{
           tip: 1, //标识
         });
       })
-      req.pipe(display.stdin);
+      req.pipe(serverRes);
     });
   
     return checkLoginPromise;
@@ -85,7 +85,7 @@ http.createServer((serverReq, serverRes)=>{
     var timestamp = ~Date.now();
     
     var uuid = obj.uuid;
-    var display = obj.display;
+    // var display = obj.display;
     // 检查登录和跳转
     var p = new Promise((resolve, reject)=> {
       var checkUrl = `https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=${obj.tip}&uuid=${uuid}&r=${timestamp}` 
