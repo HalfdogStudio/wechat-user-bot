@@ -2,7 +2,7 @@
 var request = require('request');
 var inspect = require('util').inspect;
 var apikeys = require('./apikeys.js')
-// var magic = require('./magic/magic.js')
+var magic = require('./magic/magic.js')
 
 // 我正准备申请答辩
 function thesis(content) {
@@ -142,7 +142,7 @@ function baiduDirect(content) {
   }
 }
 
-function magic(content, userid) {
+function magicOld(content, userid) {
   // TODO: a magic trigger engine
   var result;
   var map = new Map();

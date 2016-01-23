@@ -376,7 +376,7 @@ function webwxsync(obj) {
           for (let i = 0; i < length; i++) {
             let user = obj.memberList[i];
             if (user['UserName'] == o.UserName) {
-              ojb.memberList[i] = o;
+              obj.memberList[i] = o;
               find = true;
               break;
             } 
