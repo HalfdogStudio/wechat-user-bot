@@ -122,6 +122,8 @@ function parseRedirectUrl(text) {
   var result = /window\.redirect_uri="([^"]+)";/.exec(text);
   // debug("parse redirect_uri: " + inspect(result));
   if (!result) {
+    console.log("无重定向地址");
+    processExit(1);
   }
   return result[1]
 }
@@ -228,6 +230,7 @@ function getContact(obj) {
       jar: true,
     }
     //debug("getContact contactUrl: \n" + inspect(options));
+    // FIXME: 重新设计缓存机制
     request(options, (error, response, body)=>{
       // fs.writeFile('contact.json', JSON.stringify(body));
       obj.memberList = body.MemberList;
@@ -245,10 +248,9 @@ function botSpeak(obj) {
     var BaseRequest = obj.BaseRequest;
     var pass_ticket = obj.pass_ticket;
 
-    while (obj.MsgToUserAndSend.length > 0) {
-      //console.log("[every loop]" + inspect(obj.MsgToUserAndSend));
+    // 整体重新设计
+    obj.MsgToUserAndSend.map((msgBundle)=>{
       var msgId = (Date.now() + Math.random().toFixed(3)).replace('.', '');
-      var msgBundle = obj.MsgToUserAndSend.pop();
       var postData = {
         BaseRequest: obj.BaseRequest,
         Msg: {
@@ -275,7 +277,9 @@ function botSpeak(obj) {
         console.log("[机器人回复]", msgBundle.Msg);
         // debug("in botSpeak ret: " + inspect(body));
       })
-    }
+    });
+    // 重置为[]
+    obj.MsgToUserAndSend = [];
     resolve(obj);
   });
   return p;
@@ -364,57 +368,36 @@ function webwxsync(obj) {
       
       // FIXME: 更新群信息和个人信息
       // 忽然发现用不着更新群信息，如果想要解析用户名的人员不存在，那么就通过batchgetcontact来获取就好。
-      for (var o of body.ModContactList) {
-        if (o.UserName.startsWith('@@')) {  // 群组
-          obj.groupContact[o.UserName] = {
-            nickName: o.NickName,
-            memberList: o.MemberList,
-          }
-        } else {  // 用户
-          var length = obj.memberList.length
-          let find = false;
-          for (let i = 0; i < length; i++) {
-            let user = obj.memberList[i];
-            if (user['UserName'] == o.UserName) {
-              obj.memberList[i] = o;
-              find = true;
-              break;
-            } 
-          }
-          // 如果没有找到
-          if (!find) {
-            obj.memberList.push(o);
-          }
-        }
-      }
 
-      var replys = [];    // 用来代表回复信息的Promises Array
-      for (var o of body.AddMsgList) {
-        // TODO: 将各种逻辑穿插设计
-        // 过滤处理逻辑
-        if (!(o.ToUserName == obj.username)) {
-          continue; // 如果我不是目标用户，这种情况怎么可能发生
-        }
-        if (SPECIAL_USERS.indexOf(o.FromUserName) >= 0) {
-          continue; // 不处理特殊用户
-        }
-        // 打印逻辑
-        switch (o.MsgType) {
-          case MSGTYPE_TEXT:
-            logTextMessage(o, obj)
-          break;
-          default:
-            logNotImplementMsg(o, obj);
-        }
-        // 回复逻辑
-        switch (o.MsgType) {
-          case MSGTYPE_TEXT:
-            generateTextMessage(o, obj, replys);
-          break;
-          default:
-            generateNotImplementMsg(o, obj);
-        }
-      }
+
+      // +FIXME: 
+      // - 过滤
+      // - 
+      body.AddMsgList.
+        filter(o=>(o.ToUserName !== obj.username)). // 过滤不是给我的信息
+        filter(o=>{SPECIAL_USERS.indexOf(o.FromUserName) >= 0}). // 不是特殊用户
+        filter(o=>true).    // 用户定义黑白名单
+
+        map(o=>{ // logger
+          switch (o.MsgType) {
+              case MSGTYPE_TEXT:
+                  logTextMessage(o, obj)
+                  break;
+              default:
+                  logNotImplementMsg(o, obj);
+          }
+          return o;
+        }).
+        map(o=>{    // 回复逻辑
+          switch (o.MsgType) {
+              case MSGTYPE_TEXT:
+                  generateTextMessage(o, obj, replys);
+                  break;
+              default:
+                  generateNotImplementMsg(o, obj, replys);
+          }
+          return o;
+        });
       Promise.all(replys).then(()=>{
         resolve(obj);
       });
@@ -646,3 +629,30 @@ function generateNotImplementMsg(o) {
 }
 
 function ignore() {};
+
+function cacheContact(modContactList, obj) {
+  for (var o of ModContactList) {
+    if (o.UserName.startsWith('@@')) {  // 群组
+      obj.groupContact[o.UserName] = {
+        nickName: o.NickName,
+        memberList: o.MemberList,
+      }
+    } else {  // 用户
+      // 查找与替换
+      var length = obj.memberList.length
+      let find = false;
+      for (let i = 0; i < length; i++) {
+        let user = obj.memberList[i];
+        if (user['UserName'] == o.UserName) {
+          obj.memberList[i] = o;
+          find = true;
+          break;
+        } 
+      }
+      // 如果没有找到
+      if (!find) {
+        obj.memberList.push(o);
+      }
+    }
+  }
+}
