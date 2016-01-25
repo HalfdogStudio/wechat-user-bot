@@ -28,3 +28,6 @@ node_modules
 
 # apikeys
 apikeys.js
+# vim temp file
+*.swp
+*.swo
