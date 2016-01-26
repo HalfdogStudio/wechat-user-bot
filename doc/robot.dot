@@ -2,37 +2,28 @@
 # LiuYuyang
 
 
-digraph robot {
-	rankdir=TB;
-	bgcolor="#e5e5e5";
+graph robot {
+	rankdir=BT;
+	bgcolor="#f6f6f6";
 	color="#b5e77d";
 
-
 	# 样式
-	node [style=filled,color="black", fillcolor="#85d1df"];
+	node [style=filled,color="black", fillcolor="#85d1df", shape=box];
 	edge [color="darkblue", fontcolor="darkblue"];
 	style="filled";
 	fillcolor="#b5e77d";
 
-    login[label="登录"];
-    updateContact[label="更新联系人信息"];
+    webwx[label="微信机器人"];
+    dialog[label="对话引擎"];
+    global[label="变量声明"];
+	logger[label="消息记录"];
+	reply[label="消息回复"];
+	cache[label="信息缓存"];
+	apikeys[label="api配置"];
+	main[label="入口程序"];
 
-	start[label="开始", shape=diamond];
-	start -> login;
-
-	login -> updateContact;
-	updateContact -> synccheck;
-
-	synccheck[label="长连接(synccheck)", shape=box];
-	webwxsync[label="增量更新(webwxsync)", shape=box];
-	synccheck -> webwxsync -> synccheck;
-
-	webwxsync -> {updateContact, logMsg, reply};
-
-	subgraph cluster_reply {
-		label="消息记录和回复";
-		logMsg[label="记录消息"];
-		reply[label="处理消息"];
-	}
+	{logger, reply, cache, global} -- webwx;
+	webwx -- main;
+	{apikeys, dialog} -- reply;
 }
 
