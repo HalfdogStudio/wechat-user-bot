@@ -239,7 +239,9 @@ function getContact(obj) {
 }
 
 function botSpeak(obj) {
-  passWebwxsync(obj);
+  if (!obj.webwxsync) {
+    return Promise.resolve(obj);
+  }
   var p = new Promise((resolve, reject)=>{
     //debug('obj in botSpeak:\n' + inspect(obj));
     var BaseRequest = obj.BaseRequest;
@@ -275,7 +277,7 @@ function botSpeak(obj) {
         // debug("in botSpeak ret: " + inspect(body));
       })
     });
-    // 重置为[]
+    // 重置为[] pop all handled msgs
     obj.MsgToUserAndSend = [];
     resolve(obj);
   });
@@ -333,7 +335,9 @@ function synccheck(obj) {
 
 function webwxsync(obj) {
   // https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=xWam498tVKzNaHLt&skey=@crypt_3bb2969_a8ec83465d303fb83bf7ddcf512c081d&lang=en_US&pass_ticket=YIBmwsusvnbs8l7Z4wtRdBXtslA8JjyHxsy0Fsf3PN8NTiP3fzhjB9rOE%252Fzu6Nur
-  passWebwxsync(obj);
+  if (!obj.webwxsync) {
+    return Promise.resolve(obj);
+  }
   var p = new Promise((resolve, reject) => {
     //debug('obj in webwxsync:\n' + inspect(obj));
     var BaseRequest = obj.BaseRequest;
@@ -362,6 +366,7 @@ function webwxsync(obj) {
       // 更新 synckey
       obj.SyncKey = body.SyncKey;
       //debug("in websync body: " + inspect(body))
+      //FIXME: 队列，非要处理完单次的更新吗？
       
       var replys = body.AddMsgList.
         filter(o=>(o.ToUserName === obj.username)). // 过滤不是给我的信息
@@ -372,8 +377,10 @@ function webwxsync(obj) {
         map(generateReplys(obj));   // 回复
 
       // get all replys resolved 所有回复完成
+      // FIXME: 不对，如果单个消息回复失败则不该所有该批次更新都失败
+      // 也许可以对失败回复回复以特殊值undefined
       Promise.all(replys).then(()=>{
-        resolve(obj);
+        resolve(obj);   // 在回调中控制权交给botSpeak
       });
 
       // 更新联系人如果有的话
@@ -388,12 +395,6 @@ function robot(obj) {
     then(webwxsync).
     then(botSpeak).then(robot).
     catch(console.error);
-}
-
-function passWebwxsync(obj) {
-  if (!obj.webwxsync) {
-    return Promise.resolve(obj);
-  }
 }
 
 function processExit(code, signal) {

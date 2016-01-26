@@ -1,0 +1,29 @@
+# sa@linuxer.me
+# LiuYuyang
+
+
+graph robot {
+	rankdir=BT;
+	bgcolor="#f6f6f6";
+	color="#b5e77d";
+
+	# 样式
+	node [style=filled,color="black", fillcolor="#85d1df", shape=box];
+	edge [color="darkblue", fontcolor="darkblue"];
+	style="filled";
+	fillcolor="#b5e77d";
+
+    webwx[label="微信机器人"];
+    dialog[label="对话引擎"];
+    global[label="变量声明"];
+	logger[label="消息记录"];
+	reply[label="消息回复"];
+	cache[label="信息缓存"];
+	apikeys[label="api配置"];
+	main[label="入口程序"];
+
+	{logger, reply, cache, global} -- webwx;
+	webwx -- main;
+	{apikeys, dialog} -- reply;
+}
+

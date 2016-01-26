@@ -21,5 +21,8 @@ getUUID.
   then(webwxinit).
   then(getContact).
   then(robot).
-  catch(console.error);
+  catch((e)=>{
+    console.error(e);
+    process.exit(1);
+  });
 
