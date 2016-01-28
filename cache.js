@@ -15,8 +15,8 @@ function cacheContact(modContactList, obj) {
         // console.log('用户缓存推入', o.NickName)
         obj.memberList.push(o);
       } else {
-        console.log('用户缓存替换', o.NickName)
-        // obj.memberList[index] = o;
+        // console.log('用户缓存替换', o.NickName)
+        obj.memberList[index] = o;
       }
     }
   });

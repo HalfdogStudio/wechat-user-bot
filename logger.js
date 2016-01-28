@@ -153,8 +153,8 @@ function handleGroup(groupUserName, replyContent, obj) {
                          nickName: groupRealName, 
                        };
                        resolve(obj);
-                     });
-      })
+                     });    // request
+      });   //promise
     } else {
       var contactP = Promise.resolve(obj);
     }
@@ -162,14 +162,9 @@ function handleGroup(groupUserName, replyContent, obj) {
     contactP.then(_logGroupTextMsg);
     // 记录群消息函数
     function _logGroupTextMsg(obj) {
-      // 直接更新
-      for (let m of obj.groupContact[groupUserName]['memberList']) {
-        if (fromUserName && (fromUserName == m.UserName)) {
-          var nickName = m.NickName;
-          var groupRealName = obj.groupContact[groupUserName]['nickName'];
-          resolve("[" + groupRealName + "]" + nickName + replyContent.replace(fromUserName, '').replace("<br/>", ""));
-        }
-      }
+      var groupRealName = obj.groupContact[groupUserName]['nickName'];
+      var m = obj.groupContact[groupUserName]['memberList'].find(m=>m.UserName==fromUserName)
+      resolve("[" + groupRealName + "]" + m.NickName + replyContent.replace(fromUserName, '').replace("<br/>", ""));
     }
   });
   return p;
