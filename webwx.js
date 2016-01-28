@@ -367,6 +367,7 @@ function webwxsync(obj) {
       obj.SyncKey = body.SyncKey;
       //debug("in websync body: " + inspect(body))
       //FIXME: 队列，非要处理完单次的更新吗？
+      //FIXME: 将这些filter和map作为参数以类似eventListener注册的方式传入？
       
       var replys = body.AddMsgList.
         filter(o=>(o.ToUserName === obj.username)). // 过滤不是给我的信息
