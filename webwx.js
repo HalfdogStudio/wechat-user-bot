@@ -42,7 +42,7 @@ var getUUID = new Promise((resolve, reject)=>{
 function checkAndParseUUID(text) {
   var result = /window.QRLogin.code = (\d+); window.QRLogin.uuid = "([^"]+)";/.exec(text);
   //debug("checkAndParseUUID");
-  if (result[1] != '200') {
+  if (!result || result[1] != '200') {
     return false;
   }
   return result[2];
