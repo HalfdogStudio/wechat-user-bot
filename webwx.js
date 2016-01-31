@@ -333,69 +333,77 @@ function synccheck(obj) {
   return p;
 }
 
-function webwxsync(obj) {
-  // https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=xWam498tVKzNaHLt&skey=@crypt_3bb2969_a8ec83465d303fb83bf7ddcf512c081d&lang=en_US&pass_ticket=YIBmwsusvnbs8l7Z4wtRdBXtslA8JjyHxsy0Fsf3PN8NTiP3fzhjB9rOE%252Fzu6Nur
-  if (!obj.webwxsync) {
-    return Promise.resolve(obj);
-  }
-  var p = new Promise((resolve, reject) => {
-    //debug('obj in webwxsync:\n' + inspect(obj));
-    var BaseRequest = obj.BaseRequest;
-    var pass_ticket = obj.pass_ticket;
-    var rr = ~Date.now();
-    var postData = {
-      BaseRequest: obj.BaseRequest,
-      SyncKey: obj.SyncKey
-    };
-    var options = {
-      baseUrl: 'https://wx.qq.com',
-      uri: `/cgi-bin/mmwebwx-bin/webwxsync?sid=${obj.BaseRequest.Sid}&skey=${obj.BaseRequest.Skey}&lang=en_US&pass_ticket=${pass_ticket}&rr=${rr}`,
-      method: 'POST',
-      body: postData,
-      json: true,
-      jar: true,
+function webwxsync(filters, mappers) {
+  return (obj)=>{
+    // https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=xWam498tVKzNaHLt&skey=@crypt_3bb2969_a8ec83465d303fb83bf7ddcf512c081d&lang=en_US&pass_ticket=YIBmwsusvnbs8l7Z4wtRdBXtslA8JjyHxsy0Fsf3PN8NTiP3fzhjB9rOE%252Fzu6Nur
+    if (!obj.webwxsync) {
+      return Promise.resolve(obj);
     }
+    return new Promise((resolve, reject) => {
+      //debug('obj in webwxsync:\n' + inspect(obj));
+      var BaseRequest = obj.BaseRequest;
+      var pass_ticket = obj.pass_ticket;
+      var rr = ~Date.now();
+      var postData = {
+        BaseRequest: obj.BaseRequest,
+        SyncKey: obj.SyncKey
+      };
+      var options = {
+        baseUrl: 'https://wx.qq.com',
+        uri: `/cgi-bin/mmwebwx-bin/webwxsync?sid=${obj.BaseRequest.Sid}&skey=${obj.BaseRequest.Skey}&lang=en_US&pass_ticket=${pass_ticket}&rr=${rr}`,
+        method: 'POST',
+        body: postData,
+        json: true,
+        jar: true,
+      }
 
-    //debug("options in webwxsync: \n" + inspect(options));
-    //debug("postData in webwxsync: \n" + inspect(postData));
+      //debug("options in webwxsync: \n" + inspect(options));
+      //debug("postData in webwxsync: \n" + inspect(postData));
 
-    // 请在评论教我该怎么在循环中优雅地使用Promise。。。
-    request(options, (error, response, body)=>{
-      // console.log("websync:" + inspect(obj.SyncKey));
-      // fs.writeFile('webwxsync.json', JSON.stringify(body));
-      // 更新 synckey
-      obj.SyncKey = body.SyncKey;
-      //debug("in websync body: " + inspect(body))
-      //FIXME: 队列，非要处理完单次的更新吗？
-      //FIXME: 将这些filter和map作为参数以类似eventListener注册的方式传入？
-      
-      var replys = body.AddMsgList.
-        filter(o=>(o.ToUserName === obj.username)). // 过滤不是给我的信息
-        filter(o=>(SPECIAL_USERS.indexOf(o.FromUserName) < 0)). // 不是特殊用户
-        filter(o=>true).    // 用户定义黑白名单
+      // 请在评论教我该怎么在循环中优雅地使用Promise。。。
+      request(options, (error, response, body)=>{
+        // console.log("websync:" + inspect(obj.SyncKey));
+        // fs.writeFile('webwxsync.json', JSON.stringify(body));
+        // 更新 synckey
+        obj.SyncKey = body.SyncKey;
+        //debug("in websync body: " + inspect(body))
+        //FIXME: 队列，非要处理完单次的更新吗？
+        //FIXME: 将这些filter和map作为参数以类似eventListener注册的方式传入？
 
-        map(wechatLogger(obj)).     // 日志
-        map(generateReplys(obj));   // 回复
+        var replys = body.AddMsgList   // 先是默认filter
+          .filter(o=>(o.ToUserName === obj.username)) // 过滤不是给我的信息
+          .filter(o=>(SPECIAL_USERS.indexOf(o.FromUserName) < 0)) // 不是特殊用户
 
-      // get all replys resolved 所有回复完成
-      // FIXME: 不对，如果单个消息回复失败则不该所有该批次更新都失败
-      // 也许可以对失败回复回复以特殊值undefined
-      Promise.all(replys).then(()=>{
-        resolve(obj);   // 在回调中控制权交给botSpeak
+        filters.forEach(f=> {
+          replys=replys.filter(f(obj));
+        });
+
+        mappers.forEach(f=> {
+          replys=replys.map(f(obj));
+        });
+
+        // get all replys resolved 所有回复完成
+        // FIXME: 不对，如果单个消息回复失败则不该所有该批次更新都失败
+        // 也许可以对失败回复回复以特殊值undefined
+        Promise.all(replys).then(()=>{
+          resolve(obj);   // 在回调中控制权交给botSpeak
+        });
+
+        // 更新联系人如果有的话
+        cacheContact(body.ModContactList, obj);
       });
-
-      // 更新联系人如果有的话
-      cacheContact(body.ModContactList, obj);
     });
-  });
-  return p;
+  }
 }
 
-function robot(obj) {
-  synccheck(obj).
-    then(webwxsync).
-    then(botSpeak).then(robot).
-    catch(console.error);
+function robot(filters, mappers) {
+  return (obj) => {
+    synccheck(obj)
+    .then(webwxsync(filters, mappers))
+    .then(botSpeak)
+    .then(robot(filters, mappers))
+    .catch(console.error);
+  }
 }
 
 function processExit(code, signal) {
