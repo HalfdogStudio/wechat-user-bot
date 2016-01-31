@@ -24,5 +24,8 @@
   "dependencies": {
     "request": "^2.67.0",
     "segment": "^0.1.3"
+  },
+  "devDependencies": {
+    "mocha": "^2.3.4"
   }
 }

@@ -8,20 +8,27 @@ var parseRedirectUrl = require('./webwx.js').parseRedirectUrl;
 var login = require('./webwx.js').login;
 var getbaseRequest = require('./webwx.js').getbaseRequest;
 var webwxinit = require('./webwx.js').webwxinit;
+
+var wechatLogger = require('./logger.js').wechatLogger;
+var generateReplys = require('./reply.js').generateReplys;
+
 var getContact = require('./webwx.js').getContact;
 var robot = require('./webwx.js').robot;
 
-getUUID.
-  then(checkAndParseUUID).
-  then(showQRImage).
-  then(checkLogin).
-  then(parseRedirectUrl).
-  then(login).
-  then(getbaseRequest).
-  then(webwxinit).
-  then(getContact).
-  then(robot).
-  catch((e)=>{
+getUUID
+  .then(checkAndParseUUID)
+  .then(showQRImage)
+  .then(checkLogin)
+  .then(parseRedirectUrl)
+  .then(login)
+  .then(getbaseRequest)
+  .then(webwxinit)
+  .then(getContact)
+  .then(robot(
+    [(obj)=>o=>true],
+    [wechatLogger, generateReplys]
+  ))
+  .catch((e)=>{
     console.error(e);
     process.exit(1);
   });

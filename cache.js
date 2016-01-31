@@ -1,30 +1,27 @@
 'use strict'
 
 function cacheContact(modContactList, obj) {
-  for (var o of modContactList) {
-    if (o.UserName.startsWith('@@')) {  // 群组
+  modContactList.forEach(o=>{
+    if (o.UserName.startsWith('@@')) {  // 群组直接替换了
+      // console.log('群缓存更新', o.NickName)
       obj.groupContact[o.UserName] = {
         nickName: o.NickName,
         memberList: o.MemberList,
       }
     } else {  // 用户
-      // 查找与替换
-      var length = obj.memberList.length
-      let find = false;
-      for (let i = 0; i < length; i++) {
-        let user = obj.memberList[i];
-        if (user['UserName'] == o.UserName) {
-          obj.memberList[i] = o;
-          find = true;
-          break;
-        } 
-      }
-      // 如果没有找到
-      if (!find) {
+      // 如果不在缓存中
+      var index = obj.memberList.findIndex(user=> user['UserName'] == o.UserName);
+      if (index < 0) {
+        // console.log('用户缓存推入', o.NickName)
         obj.memberList.push(o);
+      } else {
+        // console.log('用户缓存替换', o.NickName)
+        obj.memberList[index] = o;
       }
     }
-  }
+  });
 }
+
+
 
 module.exports.cacheContact = cacheContact;
