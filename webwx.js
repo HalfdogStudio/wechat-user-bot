@@ -1,5 +1,4 @@
 'use strict'
-var child_process = require('child_process');
 var debug = (text)=>console.error("[DEBUG]", text);
 var inspect = require('util').inspect;
 var request = require('request');
@@ -48,31 +47,32 @@ function checkAndParseUUID(text) {
   return result[2];
 }
 
-function showQRImage(uuid) {
-  console.log("请扫描二维码并确认登录，关闭二维码窗口继续...");
-  var QRUrl = 'https://login.weixin.qq.com/qrcode/' + uuid + '?';
-  var param = {
-    t: 'webwx',
-    '_': Date.now()
+function showQRImage(display) {
+  return (uuid) => {
+    console.log("请扫描二维码并确认登录，关闭二维码窗口继续...");
+    var QRUrl = 'https://login.weixin.qq.com/qrcode/' + uuid + '?';
+    var param = {
+      t: 'webwx',
+      '_': Date.now()
+    }
+    //debug(QRUrl + querystring.stringify(param))
+
+    var checkLoginPromise = new Promise((resolve, reject)=> {
+      display.on('exit', processExit);
+      var req = request(QRUrl, {qs: param});
+      req.on('response', ()=>{
+        resolve({
+          uuid: uuid,
+          display: display, // 将display传递下去
+          tip: 1, //标识
+        });
+      })
+      req.pipe(display.stdin);
+    });
+
+    return checkLoginPromise;
+    // 登录
   }
-  //debug(QRUrl + querystring.stringify(param))
-
-  var checkLoginPromise = new Promise((resolve, reject)=> {
-    var display = child_process.spawn('display');
-    display.on('exit', processExit);
-    var req = request(QRUrl, {qs: param});
-    req.on('response', ()=>{
-      resolve({
-        uuid: uuid,
-        display: display,
-        tip: 1, //标识
-      });
-    })
-    req.pipe(display.stdin);
-  });
-
-  return checkLoginPromise;
-  // 登录
 }
 
 // 408 408 408 ... 201 ..408 .. 200 ok
@@ -314,7 +314,8 @@ function synccheck(obj) {
     request(options, (error, response, body)=>{
       // console.log("synccheck:" + inspect(obj.SyncKey));
       if (error) {
-        reject(error);
+        obj.webwxsync = false;
+        resolve(obj);   //如果synccheck网络错误
       }
       // debug("in synccheck body : " + body);
       // 服务器发出断开消息，登出
@@ -327,7 +328,7 @@ function synccheck(obj) {
         obj.webwxsync = true;  // 标识有没有新消息，要不要websync
       } 
       resolve(obj);
-    })
+    });
   });
 
   return p;
@@ -362,6 +363,9 @@ function webwxsync(filters, mappers) {
 
       // 请在评论教我该怎么在循环中优雅地使用Promise。。。
       request(options, (error, response, body)=>{
+        if (error) {
+          reject(error);
+        }
         // console.log("websync:" + inspect(obj.SyncKey));
         // fs.writeFile('webwxsync.json', JSON.stringify(body));
         // 更新 synckey
@@ -408,7 +412,7 @@ function robot(filters, mappers) {
 
 function processExit(code, signal) {
   console.log("登录失败，退出程序");
-  process.exit(code)
+  process.exit(code);
 }
 
 module.exports.getUUID = getUUID;
