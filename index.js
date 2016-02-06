@@ -15,9 +15,13 @@ var generateReplys = require('./reply.js').generateReplys;
 var getContact = require('./webwx.js').getContact;
 var robot = require('./webwx.js').robot;
 
+// display, which is a stream
+var child_process = require('child_process');
+var display = child_process.spawn('display');
+
 getUUID
   .then(checkAndParseUUID)
-  .then(showQRImage)
+  .then(showQRImage(display))
   .then(checkLogin)
   .then(parseRedirectUrl)
   .then(login)

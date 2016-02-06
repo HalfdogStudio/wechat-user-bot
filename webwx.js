@@ -273,6 +273,7 @@ function botSpeak(obj) {
       //debug("postData in botSpeak: \n" + inspect(postData));
 
       request(options, (error, response, body)=>{
+        // FIXME: 机器人回复逻辑错误
         console.log("[机器人回复]", msgBundle.Msg);
         // debug("in botSpeak ret: " + inspect(body));
       })
@@ -313,20 +314,16 @@ function synccheck(obj) {
 
     request(options, (error, response, body)=>{
       // console.log("synccheck:" + inspect(obj.SyncKey));
-      if (error) {
-        obj.webwxsync = false;
-        resolve(obj);   //如果synccheck网络错误
-      }
-      // debug("in synccheck body : " + body);
-      // 服务器发出断开消息，登出
-      if (body == 'window.synccheck={retcode:"1101",selector:"0"}') {
+      obj.webwxsync = false;
+      if (error || !(/retcode:"0"/.test(body)) ){ // 有时候synccheck失败仅仅返回空
+        //reject(error || "fail sync body");
+        resolve(obj);
+      } else if (body == 'window.synccheck={retcode:"1101",selector:"0"}') {
         console.log("服务器断开连接，退出程序")
         process.exit(1)
-      } 
-      // TODO: 整理各种情况
-      if (body !== 'window.synccheck={retcode:"0",selector:"0"}') {
+      } else if (body !== 'window.synccheck={retcode:"0",selector:"0"}') {
         obj.webwxsync = true;  // 标识有没有新消息，要不要websync
-      } 
+      }
       resolve(obj);
     });
   });
@@ -356,18 +353,21 @@ function webwxsync(filters, mappers) {
         body: postData,
         json: true,
         jar: true,
+        timeout: 15e3,  // 不设定又会hang
       }
 
-      //debug("options in webwxsync: \n" + inspect(options));
-      //debug("postData in webwxsync: \n" + inspect(postData));
-
-      // 请在评论教我该怎么在循环中优雅地使用Promise。。。
+      // FIXME: 错误处理
       request(options, (error, response, body)=>{
         if (error) {
-          reject(error);
+          //reject(error);
+          debug('webwxsync fail: ' + inspect(error));
+          resolve(obj);
         }
-        // console.log("websync:" + inspect(obj.SyncKey));
-        // fs.writeFile('webwxsync.json', JSON.stringify(body));
+        if (!body || body.BaseResponse.Ret !== 0) {
+          debug('webwxsync fail: ' + inspect(body));
+          resolve(obj);
+          return;   // a must
+        }
         // 更新 synckey
         obj.SyncKey = body.SyncKey;
         //debug("in websync body: " + inspect(body))
