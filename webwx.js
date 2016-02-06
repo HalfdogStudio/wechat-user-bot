@@ -58,7 +58,7 @@ function showQRImage(display) {
     //debug(QRUrl + querystring.stringify(param))
 
     var checkLoginPromise = new Promise((resolve, reject)=> {
-      display.on('exit', processExit);
+      display.on('exit', sessionStop);
       var req = request(QRUrl, {qs: param});
       req.on('response', ()=>{
         resolve({
@@ -93,7 +93,7 @@ function checkLogin(obj) {
               if (/window\.code=200/.test(body)) {
                 console.log("登录微信...");
                 // 删除退出子进程杀掉主进程的回调
-                display.removeListener('exit', processExit)
+                display.removeListener('exit', sessionStop)
                 display.kill();
                 resolve(body);
               } else if(/window\.code=201/.test(body)){
@@ -108,7 +108,7 @@ function checkLogin(obj) {
               } else {
                 console.log("验证码超时...")
                 display.kill();
-                processExit(1);
+                sessionStop(1);
               }
             });
   });
@@ -120,7 +120,7 @@ function parseRedirectUrl(text) {
   // debug("parse redirect_uri: " + inspect(result));
   if (!result) {
     console.log("无重定向地址");
-    processExit(1);
+    sessionStop(1);
   }
   return result[1]
 }
@@ -273,9 +273,9 @@ function botSpeak(obj) {
       //debug("postData in botSpeak: \n" + inspect(postData));
 
       request(options, (error, response, body)=>{
-        // FIXME: 机器人回复逻辑错误
-        console.log("[机器人回复]", msgBundle.Msg);
-        // debug("in botSpeak ret: " + inspect(body));
+        if (!error) {
+          console.log("[机器人回复]", msgBundle.Msg);
+        }
       })
     });
     // 重置为[] pop all handled msgs
@@ -315,12 +315,11 @@ function synccheck(obj) {
     request(options, (error, response, body)=>{
       // console.log("synccheck:" + inspect(obj.SyncKey));
       obj.webwxsync = false;
-      if (error || !(/retcode:"0"/.test(body)) ){ // 有时候synccheck失败仅仅返回空
-        //reject(error || "fail sync body");
+      if (error || !(/retcode:"0"/.test(body)) ){ // 有时候synccheck失败仅仅返回空而没有失败？
         resolve(obj);
       } else if (body == 'window.synccheck={retcode:"1101",selector:"0"}') {
         console.log("服务器断开连接，退出程序")
-        process.exit(1)
+        sessionStop(1)
       } else if (body !== 'window.synccheck={retcode:"0",selector:"0"}') {
         obj.webwxsync = true;  // 标识有没有新消息，要不要websync
       }
@@ -358,15 +357,16 @@ function webwxsync(filters, mappers) {
 
       // FIXME: 错误处理
       request(options, (error, response, body)=>{
+        // 经常出现socket hang up或者timeout的网络问题
         if (error) {
           //reject(error);
           debug('webwxsync fail: ' + inspect(error));
           resolve(obj);
+          return;
         }
         if (!body || body.BaseResponse.Ret !== 0) {
-          debug('webwxsync fail: ' + inspect(body));
+          debug('webwxsync no body: ' + inspect(body));
           resolve(obj);
-          return;   // a must
         }
         // 更新 synckey
         obj.SyncKey = body.SyncKey;
@@ -387,8 +387,7 @@ function webwxsync(filters, mappers) {
         });
 
         // get all replys resolved 所有回复完成
-        // FIXME: 不对，如果单个消息回复失败则不该所有该批次更新都失败
-        // 也许可以对失败回复回复以特殊值undefined
+        // FIXME: webwxsendmsg似乎会被限制并发和频率，也可能只是微信的网络问题
         Promise.all(replys).then(()=>{
           resolve(obj);   // 在回调中控制权交给botSpeak
         });
@@ -410,8 +409,8 @@ function robot(filters, mappers) {
   }
 }
 
-function processExit(code, signal) {
-  console.log("登录失败，退出程序");
+function sessionStop(code, signal) {
+  console.log('结束会话');
   process.exit(code);
 }
 
