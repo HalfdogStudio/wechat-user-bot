@@ -1,5 +1,4 @@
 'use strict'
-var child_process = require('child_process');
 var debug = (text)=>console.error("[DEBUG]", text);
 var inspect = require('util').inspect;
 var request = require('request');
@@ -48,31 +47,32 @@ function checkAndParseUUID(text) {
   return result[2];
 }
 
-function showQRImage(uuid) {
-  console.log("请扫描二维码并确认登录，关闭二维码窗口继续...");
-  var QRUrl = 'https://login.weixin.qq.com/qrcode/' + uuid + '?';
-  var param = {
-    t: 'webwx',
-    '_': Date.now()
+function showQRImage(display) {
+  return (uuid) => {
+    console.log("请扫描二维码并确认登录，关闭二维码窗口继续...");
+    var QRUrl = 'https://login.weixin.qq.com/qrcode/' + uuid + '?';
+    var param = {
+      t: 'webwx',
+      '_': Date.now()
+    }
+    //debug(QRUrl + querystring.stringify(param))
+
+    var checkLoginPromise = new Promise((resolve, reject)=> {
+      display.on('exit', sessionStop);
+      var req = request(QRUrl, {qs: param});
+      req.on('response', ()=>{
+        resolve({
+          uuid: uuid,
+          display: display, // 将display传递下去
+          tip: 1, //标识
+        });
+      })
+      req.pipe(display.stdin);
+    });
+
+    return checkLoginPromise;
+    // 登录
   }
-  //debug(QRUrl + querystring.stringify(param))
-
-  var checkLoginPromise = new Promise((resolve, reject)=> {
-    var display = child_process.spawn('display');
-    display.on('exit', processExit);
-    var req = request(QRUrl, {qs: param});
-    req.on('response', ()=>{
-      resolve({
-        uuid: uuid,
-        display: display,
-        tip: 1, //标识
-      });
-    })
-    req.pipe(display.stdin);
-  });
-
-  return checkLoginPromise;
-  // 登录
 }
 
 // 408 408 408 ... 201 ..408 .. 200 ok
@@ -93,7 +93,7 @@ function checkLogin(obj) {
               if (/window\.code=200/.test(body)) {
                 console.log("登录微信...");
                 // 删除退出子进程杀掉主进程的回调
-                display.removeListener('exit', processExit)
+                display.removeListener('exit', sessionStop)
                 display.kill();
                 resolve(body);
               } else if(/window\.code=201/.test(body)){
@@ -108,7 +108,7 @@ function checkLogin(obj) {
               } else {
                 console.log("验证码超时...")
                 display.kill();
-                processExit(1);
+                sessionStop(1);
               }
             });
   });
@@ -120,7 +120,7 @@ function parseRedirectUrl(text) {
   // debug("parse redirect_uri: " + inspect(result));
   if (!result) {
     console.log("无重定向地址");
-    processExit(1);
+    sessionStop(1);
   }
   return result[1]
 }
@@ -273,8 +273,9 @@ function botSpeak(obj) {
       //debug("postData in botSpeak: \n" + inspect(postData));
 
       request(options, (error, response, body)=>{
-        console.log("[机器人回复]", msgBundle.Msg);
-        // debug("in botSpeak ret: " + inspect(body));
+        if (!error) {
+          console.log("[机器人回复]", msgBundle.Msg);
+        }
       })
     });
     // 重置为[] pop all handled msgs
@@ -313,21 +314,17 @@ function synccheck(obj) {
 
     request(options, (error, response, body)=>{
       // console.log("synccheck:" + inspect(obj.SyncKey));
-      if (error) {
-        reject(error);
-      }
-      // debug("in synccheck body : " + body);
-      // 服务器发出断开消息，登出
-      if (body == 'window.synccheck={retcode:"1101",selector:"0"}') {
+      obj.webwxsync = false;
+      if (error || !(/retcode:"0"/.test(body)) ){ // 有时候synccheck失败仅仅返回空而没有失败？
+        resolve(obj);
+      } else if (body == 'window.synccheck={retcode:"1101",selector:"0"}') {
         console.log("服务器断开连接，退出程序")
-        process.exit(1)
-      } 
-      // TODO: 整理各种情况
-      if (body !== 'window.synccheck={retcode:"0",selector:"0"}') {
+        sessionStop(1)
+      } else if (body !== 'window.synccheck={retcode:"0",selector:"0"}') {
         obj.webwxsync = true;  // 标识有没有新消息，要不要websync
-      } 
+      }
       resolve(obj);
-    })
+    });
   });
 
   return p;
@@ -355,15 +352,22 @@ function webwxsync(filters, mappers) {
         body: postData,
         json: true,
         jar: true,
+        timeout: 15e3,  // 不设定又会hang
       }
 
-      //debug("options in webwxsync: \n" + inspect(options));
-      //debug("postData in webwxsync: \n" + inspect(postData));
-
-      // 请在评论教我该怎么在循环中优雅地使用Promise。。。
+      // FIXME: 错误处理
       request(options, (error, response, body)=>{
-        // console.log("websync:" + inspect(obj.SyncKey));
-        // fs.writeFile('webwxsync.json', JSON.stringify(body));
+        // 经常出现socket hang up或者timeout的网络问题
+        if (error) {
+          //reject(error);
+          debug('webwxsync fail: ' + inspect(error));
+          resolve(obj);
+          return;
+        }
+        if (!body || body.BaseResponse.Ret !== 0) {
+          debug('webwxsync no body: ' + inspect(body));
+          resolve(obj);
+        }
         // 更新 synckey
         obj.SyncKey = body.SyncKey;
         //debug("in websync body: " + inspect(body))
@@ -383,8 +387,7 @@ function webwxsync(filters, mappers) {
         });
 
         // get all replys resolved 所有回复完成
-        // FIXME: 不对，如果单个消息回复失败则不该所有该批次更新都失败
-        // 也许可以对失败回复回复以特殊值undefined
+        // FIXME: webwxsendmsg似乎会被限制并发和频率，也可能只是微信的网络问题
         Promise.all(replys).then(()=>{
           resolve(obj);   // 在回调中控制权交给botSpeak
         });
@@ -406,9 +409,9 @@ function robot(filters, mappers) {
   }
 }
 
-function processExit(code, signal) {
-  console.log("登录失败，退出程序");
-  process.exit(code)
+function sessionStop(code, signal) {
+  console.log('结束会话');
+  process.exit(code);
 }
 
 module.exports.getUUID = getUUID;

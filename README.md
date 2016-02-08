@@ -8,8 +8,6 @@
 > Alan J. Perlis (生于1922年4月1日，卒于1990年2月7日）
 > 从SICP摘抄
 
-(2016.1.31): 算是个可靠可用的文本信息机器人了。
-
 作者仅仅为了：
 
 1. 自己想要一个能进行信息收发的某国内顶级IM机器人。
@@ -70,7 +68,12 @@ request:
 
 [如果您觉得这些东西对您有用，请支持自由软件基金会](https://my.fsf.org/donate/?pk_campaign=2015-2016-fundraiser-banner-gnu&pk_kwd=donate)
 
-## ChangLog
+## ChangeLog
+
+### 2016.2.9
+
+- 更新web示例
+- 分离display
 
 ### 2016.1.31
 
