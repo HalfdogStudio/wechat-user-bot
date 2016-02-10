@@ -6,7 +6,6 @@ var wechatLogger = require('./logger.js').wechatLogger;
 var generateReplys = require('./reply.js').generateReplys;
 var cacheContact = require('./cache.js').cacheContact;
 
-var MSGTYPE_TEXT = require('./global.js').MSGTYPE_TEXT;
 var SPECIAL_USERS = require('./global.js').SPECIAL_USERS;
 
 var getUUID = new Promise((resolve, reject)=>{
@@ -371,9 +370,8 @@ function webwxsync(filters, mappers) {
         // 更新 synckey
         obj.SyncKey = body.SyncKey;
         //debug("in websync body: " + inspect(body))
-        //FIXME: 队列，非要处理完单次的更新吗？
-        //FIXME: 将这些filter和map作为参数以类似eventListener注册的方式传入？
 
+        // 回复生成部分可以分离出去
         var replys = body.AddMsgList   // 先是默认filter
           .filter(o=>(o.ToUserName === obj.username)) // 过滤不是给我的信息
           .filter(o=>(SPECIAL_USERS.indexOf(o.FromUserName) < 0)) // 不是特殊用户

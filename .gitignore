@@ -31,3 +31,6 @@ apikeys.js
 # vim temp file
 *.swp
 *.swo
+
+# log
+pic

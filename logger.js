@@ -1,8 +1,13 @@
 'use strict'
 
 var request = require('request');
+var fs = require('fs');
+var querystring = require('querystring');
+var crypto = require('crypto');
+var path = require('path');
 
 var MSGTYPE_TEXT = require('./global.js').MSGTYPE_TEXT;
+var MSGTYPE_IMAGE = require('./global.js').MSGTYPE_IMAGE;
 
 function wechatLogger(obj) {
   return o=>{
@@ -11,6 +16,9 @@ function wechatLogger(obj) {
         case MSGTYPE_TEXT:
             logTextMessage(o, obj)
             break;
+        case MSGTYPE_IMAGE:
+            logImageMessage(o, obj)
+            break;
         default:
             logNotImplementMsg(o, obj);
     }
@@ -18,16 +26,49 @@ function wechatLogger(obj) {
   }
 }
 
+function logImageMessage(o, obj) {
+  //debug("in webwxsync someone call me:" + inspect(o));
+  // 查询用户名昵称
+  if (o.FromUserName.startsWith("@@")) {
+    logGroupImageMsg(o, obj);
+  } else {
+    logPrivateImageMsg(o, obj);
+  }
+}
+
+function logPrivateImageMsg(o, obj) {
+  var imgUrl = `https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxgetmsgimg?&MsgID=${o.MsgId}&skey=${obj.BaseRequest.Skey}`;
+  var p = handlePrivate(o.FromUserName, imgUrl, obj);
+  p.then(console.log, console.error);
+}
+
+function logGroupImageMsg(o, obj) {
+  var result = /^(@[^:]+):<br\/>/mg.exec(o.Content);
+  if (result) {
+    var fromUserName = result[1];
+  }
+  var imgUrl = `https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxgetmsgimg?&MsgID=${o.MsgId}&skey=${querystring.escape(obj.BaseRequest.Skey)}`;
+  // 保存图片到文件
+  var imgPath = path.join(process.cwd(), 'pic', crypto.createHash('md5').update(crypto.randomBytes(10)).digest('hex'));
+  try {
+    request.get(imgUrl, {jar: true}).pipe(fs.createWriteStream(imgPath));
+    var p = handleGroup(o.FromUserName, fromUserName + ':<br/>' + 'file://' + imgPath, obj);
+    p.then(console.log, console.error);
+  } catch (e){
+    console.error('下载图像资源失败:', e);
+  }
+}
+
 function logTextMessage(o, obj) {
   //debug("in webwxsync someone call me:" + inspect(o));
   // 查询用户名昵称
   if (o.FromUserName.startsWith("@@")) {
-    logGroupMsg(o, obj);
+    logGroupTextMsg(o, obj);
   } else {
-    logPrivateMsg(o, obj);
+    logPrivateTextMsg(o, obj);
   }
 }
-function logPrivateMsg(o, obj) {
+function logPrivateTextMsg(o, obj) {
   var p = handlePrivate(o.FromUserName, o.Content, obj);
   p.then(console.log, console.error);
 }
@@ -95,7 +136,7 @@ function handlePrivate(username, replyContent, obj) {
 }
 
 
-function logGroupMsg(o, obj) {
+function logGroupTextMsg(o, obj) {
   var p = handleGroup(o.FromUserName, o.Content, obj);
   p.then(console.log, console.error);
 }
@@ -170,7 +211,7 @@ function handleGroup(groupUserName, replyContent, obj) {
 }
 
 function logNotImplementMsg(o) {
-  console.error("log not implement msg type: " + o.MsgType);
+  console.error("未实现消息类型：" + o.MsgType);
 }
 
 module.exports.wechatLogger = wechatLogger;

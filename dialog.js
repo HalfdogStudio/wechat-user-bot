@@ -6,7 +6,7 @@ var apikeys = require('./apikeys.js')
 
 // 我正准备申请答辩
 function thesis(content) {
-  return Promise.resolve("我在写论文，急事请电话联系");
+  return Promise.resolve("我现在不在，有事请邮件 sa@linuxer.me");
 }
 
 function echo(content) {
