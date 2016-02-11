@@ -1,6 +1,6 @@
 {
   "name": "wechat-user-bot",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A wechat bot for normal users. Based on web wechat.",
   "main": "index.js",
   "scripts": {
@@ -16,14 +16,13 @@
     "robot"
   ],
   "author": "Liu Yuyang (sa@linuxer.me)",
-  "license": "GPL v2",
+  "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/HalfdogStudio/wechat-user-bot/issues"
   },
   "homepage": "https://github.com/HalfdogStudio/wechat-user-bot#readme",
   "dependencies": {
-    "request": "^2.67.0",
-    "segment": "^0.1.3"
+    "request": "^2.67.0"
   },
   "devDependencies": {
     "mocha": "^2.3.4"
