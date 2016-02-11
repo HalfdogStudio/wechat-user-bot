@@ -70,7 +70,7 @@ request:
 
 ## 截图
 
-![截图](https://raw.githubusercontent.com/HalfdogStudio/wechat-user-bot/refactor/screenshot/0.1.3.png)
+![截图](/screenshots/0.1.3.png)
 
 ## ChangeLog
 
