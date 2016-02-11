@@ -33,4 +33,4 @@ config/apikeys.js
 *.swo
 
 # log
-data/pic
+data/pic/*

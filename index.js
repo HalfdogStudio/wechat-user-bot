@@ -13,7 +13,7 @@ var wechatLogger = require('./lib/logger/logger.js').wechatLogger;
 var generateReplys = require('./lib/reply/reply.js').generateReplys;
 
 var getContact = require('./lib/webwx.js').getContact;
-var robot = require('./lib/webwx.js').robot;
+var robot = require('./lib/robot.js').robot;
 
 // display, which is a stream
 var child_process = require('child_process');
