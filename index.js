@@ -1,19 +1,19 @@
 'use strict'
 
-var getUUID = require('./webwx.js').getUUID;
-var checkAndParseUUID = require('./webwx.js').checkAndParseUUID;
-var showQRImage = require('./webwx.js').showQRImage;
-var checkLogin = require('./webwx.js').checkLogin;
-var parseRedirectUrl = require('./webwx.js').parseRedirectUrl;
-var login = require('./webwx.js').login;
-var getbaseRequest = require('./webwx.js').getbaseRequest;
-var webwxinit = require('./webwx.js').webwxinit;
+var getUUID = require('./lib/webwx.js').getUUID;
+var checkAndParseUUID = require('./lib/webwx.js').checkAndParseUUID;
+var showQRImage = require('./lib/webwx.js').showQRImage;
+var checkLogin = require('./lib/webwx.js').checkLogin;
+var parseRedirectUrl = require('./lib/webwx.js').parseRedirectUrl;
+var login = require('./lib/webwx.js').login;
+var getbaseRequest = require('./lib/webwx.js').getbaseRequest;
+var webwxinit = require('./lib/webwx.js').webwxinit;
 
-var wechatLogger = require('./logger.js').wechatLogger;
-var generateReplys = require('./reply.js').generateReplys;
+var wechatLogger = require('./lib/logger/logger.js').wechatLogger;
+var generateReplys = require('./lib/reply/reply.js').generateReplys;
 
-var getContact = require('./webwx.js').getContact;
-var robot = require('./webwx.js').robot;
+var getContact = require('./lib/webwx.js').getContact;
+var robot = require('./lib/robot.js').robot;
 
 // display, which is a stream
 var child_process = require('child_process');
