@@ -22,7 +22,8 @@
   },
   "homepage": "https://github.com/HalfdogStudio/wechat-user-bot#readme",
   "dependencies": {
-    "request": "^2.67.0"
+    "request": "^2.67.0",
+    "winston": "^2.1.1"
   },
   "devDependencies": {
     "mocha": "^2.3.4"
