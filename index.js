@@ -12,7 +12,7 @@ var webwxinit = require('./lib/webwx.js').webwxinit;
 var wechatLogger = require('./lib/logger/logger.js').wechatLogger;
 var generateReplys = require('./lib/reply/reply.js').generateReplys;
 
-var getContact = require('./lib/webwx.js').getContact;
+var webwxgetcontact = require('./lib/webwx.js').webwxgetcontact;
 var robot = require('./lib/robot.js').robot;
 
 // display, which is a stream
@@ -27,7 +27,7 @@ getUUID
   .then(login)
   .then(getbaseRequest)
   .then(webwxinit)
-  .then(getContact)
+  .then(webwxgetcontact)
   .then(robot(
     [(obj)=>o=>true],
     [wechatLogger, generateReplys]
