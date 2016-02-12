@@ -10,7 +10,7 @@ var getbaseRequest = require('./lib/webwx.js').getbaseRequest;
 var webwxinit = require('./lib/webwx.js').webwxinit;
 
 var wechatLogger = require('./lib/logger/logger.js').wechatLogger;
-var generateReplys = require('./lib/reply/reply.js').generateReplys;
+var generateReply = require('./lib/reply/reply.js').generateReply;
 
 var webwxgetcontact = require('./lib/webwx.js').webwxgetcontact;
 var robot = require('./lib/robot.js').robot;
@@ -30,7 +30,7 @@ getUUID
   .then(webwxgetcontact)
   .then(robot(
     [(obj)=>o=>true],
-    [wechatLogger, generateReplys]
+    [wechatLogger, generateReply]
   ))
   .catch((e)=>{
     console.error(e);
