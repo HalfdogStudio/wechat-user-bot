@@ -35,3 +35,6 @@ config/apikeys.js
 # log
 data/pic/*
 wechat-user-bot.log
+
+# Editor backup
+*~
