@@ -16,8 +16,12 @@ var getContact = require('./webwx.js').getContact;
 var robot = require('./webwx.js').robot;
 
 // display, which is a stream
-var child_process = require('child_process');
-var display = child_process.spawn('display');
+// var child_process = require('child_process');
+// var display = child_process.spawn('display');
+var display = require('qrcode-terminal');
+qrcode.generate('https://login.weixin.qq.com/l/' + self.uuid, function (qrcode) {
+    console.log(qrcode);
+});
 
 getUUID
   .then(checkAndParseUUID)
