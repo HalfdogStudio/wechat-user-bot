@@ -68,7 +68,17 @@ request:
 
 [如果您觉得这些东西对您有用，请支持自由软件基金会](https://my.fsf.org/donate/?pk_campaign=2015-2016-fundraiser-banner-gnu&pk_kwd=donate)
 
+## 截图
+
+![截图](/screenshots/0.1.3.png)
+
 ## ChangeLog
+
+### 2016.2.11
+
+- 重新组织代码
+- 分离请求和逻辑处理
+- 图像信息记录
 
 ### 2016.2.9
 

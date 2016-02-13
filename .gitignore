@@ -27,10 +27,11 @@ build/Release
 node_modules
 
 # apikeys
-apikeys.js
+config/apikeys.js
 # vim temp file
 *.swp
 *.swo
 
 # log
-pic
+data/pic/*
+wechat-user-bot.log
