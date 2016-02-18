@@ -14,6 +14,7 @@
 2. 熟悉Node的http/https request 等模块，学习HTTP基本知识。
 3. 学着Promise怎么使用，如果可以Stream如何玩，这么比较好的抽象整个流程
 4. 学习使用浏览器调试工具，https代理等等。甚至透明代理，iptable这种东西。。
+5. 抽象
 
 最重要的是：
 
@@ -22,20 +23,70 @@
 
 所以，这是一堆混乱不堪的东西，希望各位老师教我做人。
 
+## 依赖
+
+imagemagick:    // linux branch不需要
+
+    sudo apt-get install imagemagick
+
+node生态:
+
+    npm install
+
+
 ## 使用须知
 
-请为了学习和娱乐适量使用，因此造成的任何损失、影响，都由使用者自行承担，与本人无关。源代码遵循GPL v2。
+请为了学习和娱乐适量使用，因此造成的任何损失、影响，都由使用者自行承担，与作者无关。源代码遵循GPL v2。
 
-当前代码使用方式
-
+使用方式
+    
+    git clone https://github.com/HalfdogStudio/wechat-user-bot.git wechat-user-bot && cd wechat-user-bot
     node index.js
 
 扫描二维码确认登录。
 
 目前是个聊天和记录机器人，对话引擎默认为重复(echo)，可指定其它引擎。
 
-文件解构如下：
+## 架构
 
+```bash
+..[reverland@reverland-R478-R429] - [~/wx/wechat-user-bot] - [四  2月 18, 04:35]
+..[$] <( (git)-[master]-)> tree -I "node_modules|data" .
+.
+├── config
+│   └── apikeys.js
+├── doc
+│   ├── robot.dot
+│   ├── robot.dot.svg
+│   ├── webwxApp2aeaf2.js
+│   └── webwx.dot.svg
+├── examples
+│   └── web.js
+├── index.js
+├── lib
+│   ├── cache.js
+│   ├── global.js
+│   ├── logger
+│   │   └── logger.js
+│   ├── msghandle.js
+│   ├── reply
+│   │   ├── dialog.js
+│   │   └── reply.js
+│   ├── robot.js
+│   └── webwx.js
+├── LICENSE
+├── package.json
+├── README.md
+├── screenshots
+│   └── 0.1.3.png
+└── test
+
+8 directories, 19 files
+```
+
+
+
+文件如下： 
 - webwx.js：web微信相关函数
 - cache.js：缓存联系人
 - logger.js: 信息记录函数
@@ -53,16 +104,6 @@
 也可实现消息记录，包括群聊天消息。
 
 ** for fun and profit. **
-
-## 依赖
-
-imagemagick： 
-
-    sudo apt-get install imagemagick
-
-request: 
-
-    npm install request
 
 ## 捐赠
 
