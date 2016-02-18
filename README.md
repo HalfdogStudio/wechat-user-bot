@@ -23,16 +23,24 @@
 
 所以，这是一堆混乱不堪的东西，希望各位老师教我做人。
 
+## 概览
+
+基本上是这样，长连接一旦断开(服务器返回(服务器会在超时前返回)或者网络问题)，继续长连接：
+
+    登录->长连接->长连接...(无尽的长连接来保持服务器能及时推送新信息)
+                
+根据长连接返回信息，如果出现服务器如果需要更新
+
+    webwxsync->filter->transducer
+
+像js这种异步程序，当你长连接保持时并不会阻塞其他操作的执行。异步大法好！
+
+
 ## 依赖
 
-imagemagick:    // linux branch不需要
+如果不使用linux分支，需要imagemagick:
 
     sudo apt-get install imagemagick
-
-node生态:
-
-    npm install
-
 
 ## 使用须知
 
@@ -41,69 +49,12 @@ node生态:
 使用方式
     
     git clone https://github.com/HalfdogStudio/wechat-user-bot.git wechat-user-bot && cd wechat-user-bot
+    npm install
     node index.js
 
 扫描二维码确认登录。
 
 目前是个聊天和记录机器人，对话引擎默认为重复(echo)，可指定其它引擎。
-
-## 架构
-
-```bash
-..[reverland@reverland-R478-R429] - [~/wx/wechat-user-bot] - [四  2月 18, 04:35]
-..[$] <( (git)-[master]-)> tree -I "node_modules|data" .
-.
-├── config
-│   └── apikeys.js
-├── doc
-│   ├── robot.dot
-│   ├── robot.dot.svg
-│   ├── webwxApp2aeaf2.js
-│   └── webwx.dot.svg
-├── examples
-│   └── web.js
-├── index.js
-├── lib
-│   ├── cache.js
-│   ├── global.js
-│   ├── logger
-│   │   └── logger.js
-│   ├── msghandle.js
-│   ├── reply
-│   │   ├── dialog.js
-│   │   └── reply.js
-│   ├── robot.js
-│   └── webwx.js
-├── LICENSE
-├── package.json
-├── README.md
-├── screenshots
-│   └── 0.1.3.png
-└── test
-
-8 directories, 19 files
-```
-
-
-
-文件如下： 
-- webwx.js：web微信相关函数
-- cache.js：缓存联系人
-- logger.js: 信息记录函数
-- global.js: 常量声明和定义
-- reply.js: 回复逻辑
-- dialog.js: 聊天引擎
-- apikeys.js: api文件
-
-如果使用图灵机器人，需要自行申请图灵机器人的API，保存到`apikeys.js`文件内：
-
-    module.exports.turingRobotApiKey = '你申请的key';
-
-也可以在`dialog.js`里实现自己的对话系统，请参照源码。
-
-也可实现消息记录，包括群聊天消息。
-
-** for fun and profit. **
 
 ## 捐赠
 
