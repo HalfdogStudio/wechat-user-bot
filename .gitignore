@@ -31,3 +31,5 @@ node_modules
 *.swo
 # gedit temp file
 *~
+# data dir
+data/
