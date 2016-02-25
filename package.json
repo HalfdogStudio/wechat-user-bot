@@ -1,6 +1,6 @@
 {
   "name": "wechat-user-bot",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "A wechat bot for normal users. Based on web wechat.",
   "main": "index.js",
   "scripts": {
