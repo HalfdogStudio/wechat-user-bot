@@ -42,6 +42,10 @@
 
     sudo apt-get install imagemagick
 
+终端支持unicode字体：
+
+    sudo apt-get install ttf-ancient-fonts
+
 ## 使用须知
 
 请为了学习和娱乐适量使用，因此造成的任何损失、影响，都由使用者自行承担，与作者无关。源代码遵循GPL v2。
