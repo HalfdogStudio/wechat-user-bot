@@ -32,8 +32,8 @@ getUUID
   .then(robot(
     [(wxSession)=>o=>true],
     [wechatLogger, generateReply]
-    //[],
-    //[wechatLogger]
+    // [],
+    // [wechatLogger]
   ))
   .catch((e)=>{
     console.error(e);
