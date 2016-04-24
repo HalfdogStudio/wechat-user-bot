@@ -48,10 +48,13 @@
 
 ## 使用须知
 
+不好意思，Mac下需要你自己折腾让imagemagick能支持管道流数据。
+据我所知，brew 默认安装的imagemagick并不行
+
 请为了学习和娱乐适量使用，因此造成的任何损失、影响，都由使用者自行承担，与作者无关。源代码遵循GPL v2。
 
 使用方式
-    
+
     git clone https://github.com/HalfdogStudio/wechat-user-bot.git wechat-user-bot && cd wechat-user-bot
     npm install
     CURRENT_CASH=1314 node index.js
