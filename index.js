@@ -29,10 +29,10 @@ getUUID
   .then(webwxinit)
   .then(webwxgetcontact)
   .then(robot(
-    // [(wxSession)=>o=>true],
-    // [wechatLogger, generateReply]
-    [],
-    [wechatLogger]
+    [(wxSession)=>o=>true],
+    [wechatLogger, generateReply]
+    // [],
+    // [wechatLogger]
   ))
   .catch((e)=>{
     console.error(e);

@@ -54,7 +54,11 @@
     
     git clone https://github.com/HalfdogStudio/wechat-user-bot.git wechat-user-bot && cd wechat-user-bot
     npm install
-    node index.js
+    CURRENT_CASH=1314 node index.js
+
+调试请求：
+
+    CURRENT_CASH=1314 DEBUG=info node index.js
 
 扫描二维码确认登录。
 
@@ -75,6 +79,11 @@
 ![截图](/screenshots/0.1.3.png)
 
 ## ChangeLog
+
+### 2016.4.24
+
+- 实验性的多媒体文件上传接口实现
+- 默认记账机器人
 
 ### 2016.3.9
 
