@@ -81,6 +81,12 @@
 
 ![截图](/screenshots/0.1.3.png)
 
+## 友情链接
+
+> Wechaty - Wechat for Bot. Powered by WebDriver & Node.js
+
+https://github.com/zixia/wechaty
+
 ## ChangeLog
 
 ### 2016.4.24
