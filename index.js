@@ -16,8 +16,9 @@ var webwxgetcontact = require('./lib/webwx.js').webwxgetcontact;
 var robot = require('./lib/robot.js').robot;
 
 // display, which is a stream
-var child_process = require('child_process');
-var display = child_process.spawn('display');
+// var child_process = require('child_process');
+// var display = child_process.spawn('display');
+var display = require('qrcode-terminal');
 
 getUUID
   .then(checkAndParseUUID)

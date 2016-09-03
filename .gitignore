@@ -29,7 +29,17 @@ node_modules
 # vim temp file
 *.swp
 *.swo
+<<<<<<< HEAD
+
+# log
+data/pic/*
+wechat-user-bot.log
+
+# Editor backup
+*~
+=======
 # gedit temp file
 *~
 # data dir
 data/
+>>>>>>> master
